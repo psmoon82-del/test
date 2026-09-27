@@ -33,6 +33,10 @@
     if (t.includes('"insight"')) return { insight: "중요도와 만족도의 차이가 가장 큰 곳은 재미와 건강이에요. '명확한 취미가 없다'는 2022년 메모와 '몇 달째 몰입이 없다'는 말이 같은 방향을 가리킵니다. 반면 가족과 환경은 이미 잘 채워져 있어요.", question: "지난 한 달 중 가장 시간이 빨리 간 두 시간은 언제였나요?" };
     if (t.includes("인터뷰어")) {
       const turns = Array.isArray(input) ? input.length : 1;
+      const lastU = Array.isArray(input) ? String(input[input.length - 1].content) : "";
+      if (t.includes("[다음 주제로 넘어갈 때]") && lastU.includes("넘어가")) return { reply: "좋아요, 다음 주제로 가 볼게요. 첫 질문입니다.", facts: [], wants: [], events: [], move: "next" };
+      if (window.__IV_NOFACTS__ && turns > 1) return { reply: "그렇군요. 조금 더 여쭤볼게요.", facts: [], wants: [], events: [] };
+      if (window.__IV_VARY__ && turns > 1) return { reply: "알겠어요. 다음 질문입니다.", facts: [{ cat: "health", sub: ["건강 상태", "복용약", "없는칸"][turns % 3], text: "건강 사실 " + turns + "." }], wants: [], events: [] };
       if (turns <= 1) return { reply: "안녕하세요. 프로필을 읽어 보니 몇 달째 몰입이 없다고 하셨어요. 가장 최근에 '시간 가는 줄 몰랐다'고 느낀 건 언제, 무엇을 할 때였나요?", facts: [], wants: [], events: [] };
       return { reply: "건담을 조립할 때 손이 먼저 움직였다는 말이 인상적이에요. 그때 결과물보다 과정 중 어떤 순간이 가장 좋았나요?", facts: [{ area: "energy", text: "건담을 조립할 때 시간 가는 줄 모른다." }, { area: "loves", text: "완성보다 조립 과정 자체를 즐긴다." }], wants: [{ type: "do", text: "주말마다 프라모델 한 판 완성하기", horizon: "1y" }], events: [{ year: "2024", label: "첫 PG 건담 조립", lane: "me" }] };
     }

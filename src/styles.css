@@ -707,3 +707,8 @@ h3{font-size:15px}
 .tree-rej-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .tree-rej-list .chip{display:inline-flex;align-items:center;gap:4px}
 .tree-rej-list .btn{padding:2px 6px;font-size:11.5px}
+.iv-pend{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--accent-3);background:var(--accent-2);border-radius:6px;font-size:13px}
+.iv-now .meter{margin:4px 0 8px}
+.iv-stat{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.iv-stat b{font-family:var(--f-mono);font-weight:600;color:var(--ink)}
+.chat-in .row.iv-foot,.chat-in .iv-foot .row{flex-wrap:wrap;align-items:center}

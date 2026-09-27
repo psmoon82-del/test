@@ -1,0 +1,53 @@
+# interview topics: one Records category at a time, saturation (3 dry answers) or 8 answers -> ask to move on,
+# move by button or by answer, stay, and topic state for conversations recorded before topics existed
+UID = "data/users/u_testuser000000000000000/"
+ok = lambda name, cond: print(("PASS " if cond else "FAIL ") + name)
+chat = lambda pg: pg.evaluate("JSON.parse(JSON.stringify(window.__store.get('" + UID + "chat')||{}))")
+p, errs = mkpage(b, 1280, 900, extra="window.__NO_SEED__=true;window.__IV_VARY__=true;")
+p.wait_for_timeout(1200)
+p.click(".rail [data-go=interview]"); p.wait_for_timeout(200)
+p.click("[data-act=ivTopic][data-v=health]"); p.wait_for_timeout(100)
+p.click("[data-act=ivStart]"); p.wait_for_timeout(700)
+ok("topic card shows health", "건강·의료" in p.inner_text(".iv-now h4"))
+def say(txt):
+    p.fill("#ivInput", txt); p.click("[data-act=ivSend]"); p.wait_for_timeout(650)
+for k in range(7): say("답 " + str(k))
+ok("no prompt before cap", p.evaluate("!document.querySelector('.iv-pend')"))
+say("답 7")
+sent = p.evaluate("window.__SENT__[window.__SENT__.length-1].input[0].content")
+ok("prompt warned at the 8th answer", "[곧 기준]" in sent and "8번째 답" in sent)
+ok("cap reached -> move-on bar", p.evaluate("!!document.querySelector('.iv-pend')"))
+ok("sub-categories counted (bad sub dropped)", "세부 칸 2/6" in p.inner_text(".iv-now"))
+ok("status line", "8/8번째 답" in p.inner_text(".chat-in"))
+shot(p, "i01_pending", False)
+p.click("[data-act=ivStay]"); p.wait_for_timeout(200)
+ok("stay extends to 12", "8/12" in p.inner_text(".iv-now"))
+p.evaluate("window.__IV_NOFACTS__=true")
+for k in range(3): say("별거 없어요 " + str(k))
+ok("3 dry answers -> move-on bar", p.evaluate("!!document.querySelector('.iv-pend')"))
+nxt = p.inner_text(".iv-pend b")
+sent = p.evaluate("window.__SENT__.length")
+say("네 넘어가요")
+ok("answer 'next' switches topic to " + nxt, nxt in p.inner_text(".iv-now h4"))
+p.wait_for_timeout(1200); c = chat(p)
+ok("covered + auto", "health" in (c.get("covered") or []) and c.get("topic") == "auto" and c["cur"]["n"] == 0 and not c.get("pend"))
+for k in range(3): say("모르겠어요 " + str(k))
+nxt2 = p.inner_text(".iv-pend b")
+p.click("[data-act=ivMove]"); p.wait_for_timeout(700)
+ok("button moves to " + nxt2, nxt2 in p.inner_text(".iv-now h4") and ("다음 주제: " + nxt2) in p.inner_text("#chatLog"))
+shot(p, "i02_moved", False)
+print("errors:", [e for e in errs if "ERR_FAILED" not in e])
+
+# conversation saved before topics existed: long single-topic chat -> offered to move on right away
+turns = []
+for k in range(10):
+    turns.append({"role": "user", "content": "옛 답 " + str(k), "at": "2026-09-20T00:00:00Z"})
+    turns.append({"role": "assistant", "content": "옛 질문", "at": "2026-09-20T00:00:00Z", "facts": []})
+pre = {UID + "chat": {"turns": turns, "topic": "auto"}}
+p2, e2 = mkpage(b, 390, 800, extra="window.__NO_SEED__=true;window.__PRE__=" + json.dumps(pre, ensure_ascii=False) + ";")
+p2.wait_for_timeout(1200)
+p2.evaluate("location.hash='#interview'"); p2.wait_for_timeout(400)
+ok("old chat offered to move on", p2.evaluate("!!document.querySelector('.iv-pend')"))
+ok("mobile no horizontal scroll", p2.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
+shot(p2, "i03_old_mobile", False)
+print("errors:", [e for e in e2 if "ERR_FAILED" not in e])
