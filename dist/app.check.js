@@ -1201,7 +1201,7 @@ function viewReview() {
 }
 function kpi(l, v, d) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(d) + "</div></div>"; }
 function dwgCard(view, no, name, meta, preview) {
-  return '<a href="#' + view + '" class="sheet dwg-card" data-act="go" data-view="' + view + '"><div class="pv">' + preview + '</div><div class="meta"><div>' + (no !== name ? '<div class="mono muted" style="font-size:10.5px">' + no + "</div>" : "") + '<b>" + esc(name) + '</b></div><span class="tag">' + esc(meta) + "</span></div></a>";
+  return '<a href="#' + view + '" class="sheet dwg-card" data-act="go" data-view="' + view + '"><div class="pv">' + preview + '</div><div class="meta"><div>' + (no !== name ? '<div class="mono muted" style="font-size:10.5px">' + no + "</div>" : "") + "<b>" + esc(name) + '</b></div><span class="tag">' + esc(meta) + "</span></div></a>";
 }
 function miniPortrait(P) {
   const pr = S.AI.portrait;
