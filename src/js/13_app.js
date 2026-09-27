@@ -263,11 +263,25 @@ const ACT = {
   evEdit: (a) => { S.ui.editEvent = a.dataset.id; if (S.ui.view !== "gantt") goView("gantt"); else { render(); window.scrollTo({ top: 0, behavior: "smooth" }); } },
   evEditClose: () => { S.ui.editEvent = null; render(); },
   insight: (a) => runInsight(a.dataset.id),
-  ivStart: () => { const ch = S.CHAT; ch.turns = []; ch.treeAt = 0; S.ui.ivTree = null; ch.pend = null; ch.cur = ivNewCur(ch.topic && ch.topic !== "auto" ? ch.topic : ch.cur && ch.cur.n ? ivNext(S.P) : (ch.cur || {}).cat || ivOrder(S.P)[0].c); ivRun(true); },
+  ivStart: () => {
+    const ch = S.CHAT; ch.turns = []; ch.treeAt = 0; S.ui.ivTree = null; ch.pend = null;
+    if (ch.done) ivNewRound(S.P);
+    else if (ch.topic && ch.topic !== "auto") ch.cur = ivNewCur(ch.topic);
+    else if (ch.cur && ch.cur.n) { const nx = ivNext(S.P); if (nx) ivGo(nx); else { ivFinish(); ivNewRound(S.P); } }
+    ivRun(true);
+  },
   ivMove: () => {
     const ch = S.CHAT, nx = ch.pend; if (!nx || S.ui.busy.iv) return;
+    if (nx === "end") { ivFinish(); S.ui.ivTree = null; markDirty(); render(); return; }
     ivGo(nx); ch.turns.push({ role: "user", content: "(지금 주제는 충분해요. 다음 주제 '" + CAT_BY[nx].name + "'로 넘어가 첫 질문을 해 주세요)", at: nowISO(), meta: "next", label: CAT_BY[nx].name });
     S.ui.ivTree = null; markDirty(); ivRun(false);
+  },
+  ivRound: () => {
+    if (S.ui.busy.iv) return;
+    const c = ivNewRound(S.P), ch = S.CHAT; S.ui.ivTree = null;
+    if (!ch.turns.length) { ivRun(true); return; }
+    ch.turns.push({ role: "user", content: "(새 바퀴를 시작해요. 첫 주제 '" + CAT_BY[c].name + "'의 첫 질문을 해 주세요)", at: nowISO(), meta: "next", label: CAT_BY[c].name });
+    markDirty(); ivRun(false);
   },
   ivStay: () => { const ch = S.CHAT; if (!ch.cur) return; ch.cur.cap = ch.cur.n + 4; ch.cur.dry = 0; ch.pend = null; markDirty(); render(); toast("이 주제를 4번 더 이어가요."); },
   ivSend: () => {
@@ -289,7 +303,7 @@ const ACT = {
     S.ui.busy.tree = false; render();
   },
   ivRetry: () => { const t = S.CHAT.turns; if (t.length && t[t.length - 1].role === "user") ivRun(false); else ivRun(!t.length); },
-  ivTopic: (a) => { const ch = S.CHAT, v = a.dataset.v; ch.topic = v; if (v !== "auto" && (!ch.cur || ch.cur.cat !== v)) ch.cur = ivNewCur(v); if (v !== "auto") ch.pend = null; markDirty(); render(); toast("다음 질문부터 '" + (TOPICS.find((t) => t[0] === a.dataset.v) || [0, ""])[1] + "'에 초점을 맞춰요."); },
+  ivTopic: (a) => { const ch = S.CHAT, v = a.dataset.v; ch.topic = v; if (v !== "auto") { ch.done = null; if (!ch.cur || ch.cur.cat !== v) ch.cur = ivNewCur(v); ch.pend = null; } markDirty(); render(); toast("다음 질문부터 '" + (TOPICS.find((t) => t[0] === a.dataset.v) || [0, ""])[1] + "'에 초점을 맞춰요."); },
   ivNewTopic: () => { if (S.ui.busy.iv) return; S.CHAT.turns.push({ role: "user", content: "(이 질문은 넘어가고, 현재 초점에 맞는 다른 질문을 해 주세요)", at: nowISO(), meta: true }); markDirty(); ivRun(false); },
   ivClear: () => {
     if (!S.ui.confirmIvClear) { S.ui.confirmIvClear = true; toast("한 번 더 누르면 대화가 비워져요. 알게 된 사실은 남아요."); setTimeout(() => (S.ui.confirmIvClear = false), 3500); return; }

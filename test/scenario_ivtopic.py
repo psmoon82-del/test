@@ -47,7 +47,7 @@ pre = {UID + "chat": {"turns": turns, "topic": "auto"}}
 p2, e2 = mkpage(b, 390, 800, extra="window.__NO_SEED__=true;window.__PRE__=" + json.dumps(pre, ensure_ascii=False) + ";")
 p2.wait_for_timeout(1200)
 p2.evaluate("location.hash='#interview'"); p2.wait_for_timeout(400)
-ok("old chat offered to move on", p2.evaluate("!!document.querySelector('.iv-pend')"))
+ok("old chat without facts: round 1, nothing covered", "12개 중 0개" in p2.inner_text(".iv-round") and not p2.query_selector(".iv-pend"))
 ok("mobile no horizontal scroll", p2.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
 shot(p2, "i03_old_mobile", False)
 print("errors:", [e for e in e2 if "ERR_FAILED" not in e])

@@ -34,6 +34,7 @@
     if (t.includes("인터뷰어")) {
       const turns = Array.isArray(input) ? input.length : 1;
       const lastU = Array.isArray(input) ? String(input[input.length - 1].content) : "";
+      if (t.includes("[마지막 분류]") && lastU.includes("마치")) return { reply: "수고하셨어요. 이번 인터뷰는 여기까지예요.", facts: [], wants: [], events: [], move: "next" };
       if (t.includes("[다음 주제로 넘어갈 때]") && lastU.includes("넘어가")) return { reply: "좋아요, 다음 주제로 가 볼게요. 첫 질문입니다.", facts: [], wants: [], events: [], move: "next" };
       if (window.__IV_NOFACTS__ && turns > 1) return { reply: "그렇군요. 조금 더 여쭤볼게요.", facts: [], wants: [], events: [] };
       if (window.__IV_VARY__ && turns > 1) return { reply: "알겠어요. 다음 질문입니다.", facts: [{ cat: "health", sub: ["건강 상태", "복용약", "없는칸"][turns % 3], text: "건강 사실 " + turns + "." }], wants: [], events: [] };

@@ -988,33 +988,54 @@ function catFill(P, c) {
   return { c, p, n, miss };
 }
 function ivOrder(P, skip) { return LEDGER_CATS.filter((c) => c.id !== "etc" && !(skip || []).includes(c.id)).map((c) => catFill(P, c.id)).sort((a, b) => a.p - b.p); }
-/* the emptiest category not yet covered in this round; a new round starts when all are covered */
+const IV_CATS = LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => c.id);
+/* the emptiest category not yet covered in this round; null once every category has had its turn */
 function ivNext(P) {
-  const ch = S.CHAT, cur = ch.cur ? [ch.cur.cat] : [];
-  let xs = ivOrder(P, (ch.covered || []).concat(cur));
-  if (!xs.length) { ch.covered = []; xs = ivOrder(P, cur); }
-  return xs[0].c;
+  const ch = S.CHAT, xs = ivOrder(P, (ch.covered || []).concat(ch.cur ? [ch.cur.cat] : []));
+  return xs.length ? xs[0].c : null;
 }
 function ivNewCur(cat) { return { cat, n: 0, facts: 0, dry: 0, cap: IV_CAP }; }
-function ivGo(cat) {
-  const ch = S.CHAT;
-  if (ch.cur && !(ch.covered || []).includes(ch.cur.cat)) ch.covered = (ch.covered || []).concat(ch.cur.cat);
-  ch.cur = ivNewCur(cat); ch.pend = null;
+function ivClose() {
+  const ch = S.CHAT, cur = ch.cur; if (!cur) return;
+  if (!(ch.covered || []).includes(cur.cat)) ch.covered = (ch.covered || []).concat(cur.cat);
+  ch.log = (ch.log || []).concat({ round: ch.round, cat: cur.cat, n: cur.n, facts: cur.facts, at: nowISO() }).slice(-60);
+}
+/* a round ends when all twelve categories are covered (owner decision 2026-09) */
+function ivFinish() {
+  const ch = S.CHAT; ivClose();
+  ch.done = { at: nowISO(), round: ch.round || 1 }; ch.cur = null; ch.pend = null;
   if (ch.topic && ch.topic !== "auto") ch.topic = "auto";
 }
-/* conversations from before topics were tracked: take the category most of their facts went to */
+function ivGo(cat) {
+  const ch = S.CHAT;
+  if (!cat || cat === "end") { ivFinish(); return; }
+  ivClose(); ch.cur = ivNewCur(cat); ch.pend = null;
+  if (ch.topic && ch.topic !== "auto") ch.topic = "auto";
+}
+function ivNewRound(P) {
+  const ch = S.CHAT;
+  ch.round = (ch.round || 1) + 1; ch.roundAt = nowISO(); ch.covered = []; ch.done = null; ch.pend = null; ch.cur = null;
+  ch.cur = ivNewCur(ivNext(P));
+  return ch.cur.cat;
+}
+function ivLeft() { const cv = S.CHAT.covered || []; return IV_CATS.filter((c) => !cv.includes(c)); }
 function ivEnsure(P) {
-  const ch = S.CHAT; if (ch.cur && CAT_BY[ch.cur.cat]) return;
+  const ch = S.CHAT;
+  if (ch.round == null) {
+    /* before rounds existed: every category that already has interview facts counts as covered */
+    ch.round = 1;
+    const iv = P.ledger.filter((e) => e.src === "interview");
+    ch.roundAt = iv.length ? iv.map((e) => String(e.at)).sort()[0] : ch.turns.length ? ch.turns[0].at : nowISO();
+    if (ch.turns.length) { const had = new Set(iv.map((e) => e.cat)); ch.covered = IV_CATS.filter((c) => had.has(c) || (ch.covered || []).includes(c)); }
+    if (ch.cur && ch.cur.n === 0 && (ch.covered || []).includes(ch.cur.cat)) { ch.cur = null; ch.pend = null; }
+    if (ch.cur && ch.pend && ch.pend !== "end" && (ch.covered || []).includes(ch.pend)) ch.pend = ivNext(P) || "end";
+  }
+  if (ch.done) return;
+  if (ch.cur && CAT_BY[ch.cur.cat]) return;
   if (ch.topic && ch.topic !== "auto" && CAT_BY[ch.topic]) { ch.cur = ivNewCur(ch.topic); return; }
-  const byId = Object.fromEntries(P.ledger.map((e) => [e.id, e.cat])), tally = {};
-  const asst = ch.turns.filter((t) => t.role === "assistant");
-  asst.slice(-12).forEach((t) => (t.facts || []).forEach((id) => { const c = byId[id]; if (c && c !== "etc") tally[c] = (tally[c] || 0) + 1; }));
-  const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
-  ch.cur = ivNewCur(top ? top[0] : ivOrder(P)[0].c);
-  if (!ch.turns.length) return;
-  let dry = 0; for (let i = asst.length - 1; i >= 0 && !(asst[i].facts || []).length; i--) dry++;
-  Object.assign(ch.cur, { n: ch.turns.filter((t) => t.role === "user" && !t.meta).length, facts: asst.reduce((k, t) => k + (t.facts || []).length, 0), dry });
-  if (ch.cur.n >= ch.cur.cap || dry >= IV_DRY) ch.pend = ivNext(P);
+  const nx = ivNext(P);
+  if (!nx) { if (ch.turns.length) ivFinish(); else ivNewRound(P); return; }
+  ch.cur = ivNewCur(nx);
 }
 /* after each reply: follow Claude's move/stay on a pending switch, then count this answer */
 function ivCount(r, k, skip) {
@@ -1023,20 +1044,29 @@ function ivCount(r, k, skip) {
   if (ch.pend && r.move === "stay") { cur.cap = cur.n + 4; cur.dry = 0; ch.pend = null; }
   if (skip) return;
   cur.n++; cur.facts += k; cur.dry = k ? 0 : cur.dry + 1;
-  if (!ch.pend && (r.ask === true || cur.dry >= IV_DRY || cur.n >= cur.cap)) ch.pend = ivNext(S.P);
+  if (!ch.pend && (r.ask === true || cur.dry >= IV_DRY || cur.n >= cur.cap)) ch.pend = ivNext(S.P) || "end";
+}
+/* this round's interview facts by category, for the closing summary */
+function ivRoundFacts(P) {
+  const t0 = String(S.CHAT.roundAt || ""), by = {};
+  P.ledger.filter((e) => e.src === "interview" && String(e.at) >= t0).forEach((e) => (by[e.cat] = by[e.cat] || []).push(e));
+  return by;
 }
 function interviewRules(P) {
   ivEnsure(P);
+  if (!S.CHAT.cur) S.CHAT.cur = ivNewCur(ivOrder(P)[0].c);
   const ch = S.CHAT, cur = ch.cur, C = CAT_BY[cur.cat], f = catFill(P, cur.cat);
   const ws = wheelStats(P).filter((w) => w.gap != null && w.gap > 0).sort((a, b) => b.gap - a.gap).slice(0, 2);
   let focus = "[지금 주제] " + C.name + " (" + C.d + "). 이 주제 안에서 묻는다." + (f.miss.length ? " 아직 빈 세부 칸: " + f.miss.join(", ") + ". 이쪽을 우선." : "") + " 이 분류에 이미 기록된 것은 다시 묻지 말고 빈 곳이나 오래된 것을 묻는다." + (ws.length ? " 참고로 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") + "." : "") +
-    "\n[이 주제 진행] 답 " + cur.n + "번, 새 사실 " + cur.facts + "개, 최근 연속으로 새 사실이 없던 답 " + cur.dry + "번. 기준: " + IV_DRY + "번 연속 새 사실이 없거나 답이 " + cur.cap + "번에 닿으면 이 주제는 충분하다.";
-  if (ch.pend) {
+    "\n[이 주제 진행] " + (ch.round || 1) + "바퀴째, 분류 " + IV_CATS.length + "개 중 " + (ch.covered || []).length + "개 마침. 답 " + cur.n + "번, 새 사실 " + cur.facts + "개, 최근 연속으로 새 사실이 없던 답 " + cur.dry + "번. 기준: " + IV_DRY + "번 연속 새 사실이 없거나 답이 " + cur.cap + "번에 닿으면 이 주제는 충분하다.";
+  if (ch.pend === "end") {
+    focus += "\n[마지막 분류] 이번 바퀴의 마지막 분류다. 사용자의 이번 메시지가 마치자는 뜻이면 move를 \"next\"로 하고 reply에서 질문 없이 짧게 마무리 인사를 한다. 더 이야기하겠다는 뜻이면 move를 \"stay\"로 한다. 그냥 지금 주제에 대한 답을 했다면 짧게 받고, 이 주제에서 알게 된 것을 한 문장으로 정리한 뒤 이번 인터뷰를 여기서 마쳐도 될지 묻고 ask를 true로 한다.";
+  } else if (ch.pend) {
     const nx = CAT_BY[ch.pend].name;
     focus += "\n[다음 주제로 넘어갈 때] 다음 주제는 '" + nx + "'. 사용자의 이번 메시지가 넘어가자는 뜻이면 move를 \"next\"로 하고 reply에서 '" + nx + "'의 첫 질문을 한다. 지금 주제를 더 이야기하겠다는 뜻이면 move를 \"stay\"로 하고 지금 주제를 이어간다. 그냥 지금 주제에 대한 답을 했다면 짧게 받고, 이 주제에서 알게 된 것을 한 문장으로 정리한 뒤 '" + nx + "'로 넘어가도 될지 묻고 ask를 true로 한다.";
   } else if (cur.n + 1 >= cur.cap || cur.dry + 1 >= IV_DRY) {
-    const nx = CAT_BY[ivNext(P)].name;
-    focus += "\n[곧 기준] 이번 메시지가 이 주제의 " + (cur.n + 1) + "번째 답이다. " + (cur.n + 1 >= cur.cap ? "상한에 닿는다." : "이번 메시지에서 새 사실이 나오지 않으면 기준에 닿는다.") + " 기준에 닿으면 reply에서 이 주제에서 알게 된 것을 한 문장으로 정리하고 다음 주제 '" + nx + "'로 넘어가도 될지 묻는다(질문은 그것 하나). 이때 ask를 true로 한다.";
+    const nxc = ivNext(P), nx = nxc ? "다음 주제 '" + CAT_BY[nxc].name + "'로 넘어가도 될지" : "이번 인터뷰를 여기서 마쳐도 될지(마지막 분류)";
+    focus += "\n[곧 기준] 이번 메시지가 이 주제의 " + (cur.n + 1) + "번째 답이다. " + (cur.n + 1 >= cur.cap ? "상한에 닿는다." : "이번 메시지에서 새 사실이 나오지 않으면 기준에 닿는다.") + " 기준에 닿으면 reply에서 이 주제에서 알게 된 것을 한 문장으로 정리하고 " + nx + " 묻는다(질문은 그것 하나). 이때 ask를 true로 한다.";
   }
   return "당신은 자기 이해 도구 'Atlas'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
     "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 건강·의료, 재정·보험 같은 민감한 정보도 기록 대상이다. 필요하면 구체적인 수치와 날짜까지 묻되, 사용자가 원하지 않으면 바로 넘어간다.\n- 진단하거나 성격을 단정하지 않는다.\n- 이 사람은 상황에 따라 유연하게 달라지는 편일 수 있다. '상황에 따라 달라지는 모습'에 있는 항목은 한 점으로 해석하지 말고 '어떤 자리에서는 ~, 어떤 자리에서는 ~'처럼 조건을 묻는다(예: '분위기를 띄우게 되는 자리와 조용해지는 자리는 각각 어떤 곳인가요?').\n" +
@@ -1779,9 +1809,12 @@ function afterTree() {
 /* ============================================================ INTERVIEW · AI 인터뷰 */
 function viewInterview() {
   const P = S.P, turns = S.CHAT.turns, busy = S.ui.busy.iv;
+  ivEnsure(P);
+  const done = S.CHAT.done;
   const factById = Object.fromEntries(P.ledger.map((f) => [f.id, f]));
   let log = "";
-  if (!turns.length && !busy) {
+  if (!turns.length && !busy && done) log = ivSummary(P);
+  else if (!turns.length && !busy) {
     log = '<div style="margin:auto;max-width:460px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;padding:30px 10px">' +
       '<div class="eyebrow">Interview</div><h2 style="font-size:22px">빈 곳을 대화로 채웁니다</h2>' +
       '<p class="muted">Claude가 지금까지의 프로필을 읽고, 가장 비어 있거나 서로 어긋나 보이는 곳부터 한 번에 하나씩 묻습니다. 답에서 드러난 사실은 자동으로 프로필에 쌓이고, 원하지 않으면 바로 지울 수 있어요.</p>' +
@@ -1797,25 +1830,38 @@ function viewInterview() {
     }).join("");
     if (busy) log += '<div class="msg a"><span class="who">CLAUDE</span><div class="bub typing"><span class="spinner"></span><span id="ivElapsed">답을 생각하는 중</span></div></div>';
     if (S.ui.ivErr) log += '<div class="banner" style="align-self:stretch;align-items:center"><span style="flex:1">' + esc(S.ui.ivErr) + '</span><button class="btn sm" data-act="ivRetry">다시 보내기</button></div>';
+    if (done && !busy) log += ivSummary(P);
   }
   const lastUser = turns.length && turns[turns.length - 1].role === "user";
-  const inputDisabled = busy || !aiAvailable() || !turns.length;
-  ivEnsure(P);
-  const cur = S.CHAT.cur, pend = S.CHAT.pend, curName = CAT_BY[cur.cat].name;
-  const pendBar = pend && turns.length && !busy ? '<div class="iv-pend"><span>이 주제는 충분히 들었어요. 다음은 <b>' + esc(CAT_BY[pend].name) + '</b></span><span class="row" style="gap:6px"><button class="btn sm primary" data-act="ivMove">넘어가기</button><button class="btn sm ghost" data-act="ivStay">이 주제 계속</button></span></div>' : "";
-  const status = turns.length ? esc(curName) + " · " + cur.n + "/" + cur.cap + "번째 답 · 새 사실 " + cur.facts : "";
-  const chat = '<section class="sheet chat lift"><div class="chat-log" id="chatLog">' + log + '</div><div class="chat-in">' + pendBar + '<div class="row"><textarea class="input" id="ivInput" rows="2" placeholder="' + (turns.length ? "생각나는 대로 답해 주세요. Enter로 보내고 Shift+Enter로 줄을 바꿔요." : "먼저 인터뷰를 시작해 주세요.") + '" ' + (inputDisabled ? "disabled" : "") + '>' + esc(S.ui.ivDraft || "") + '</textarea><button class="btn primary" data-act="ivSend" ' + (inputDisabled ? "disabled" : "") + ' aria-label="보내기">' + I.send + '</button></div><div class="row iv-foot" style="justify-content:space-between"><span class="muted" style="font-size:11.5px">' + (S.ui.ivTree ? esc(S.ui.ivTree) + ' <a href="#tree" data-go="tree">보기</a>' : lastUser && !busy ? "마지막 메시지에 아직 답이 없어요." : status || "대화는 나만 볼 수 있게 저장돼요.") + '</span><span class="row" style="gap:6px">' + (turns.length ? '<button class="btn sm" data-act="ivTree"' + (S.ui.busy.tree || busy ? " disabled" : "") + ">" + (S.ui.busy.tree ? '<span class="spinner"></span>정리하는 중' : "마치고 생각 나무에 반영") + '</button><button class="btn sm ghost" data-act="ivNewTopic">주제 바꿔 새 질문</button><button class="btn sm ghost" data-act="ivClear">대화 비우기</button>' : "") + "</span></div></div></section>";
+  const inputDisabled = busy || !aiAvailable() || !turns.length || !!done;
+  const cur = S.CHAT.cur, pend = S.CHAT.pend, curName = cur ? CAT_BY[cur.cat].name : "", round = S.CHAT.round || 1, nCov = (S.CHAT.covered || []).length;
+  const pendBar = pend && cur && turns.length && !busy ? '<div class="iv-pend"><span>' + (pend === "end" ? "이번 바퀴의 <b>마지막 분류</b>예요. 충분히 들었어요." : "이 주제는 충분히 들었어요. 다음은 <b>" + esc(CAT_BY[pend].name) + "</b>") + '</span><span class="row" style="gap:6px"><button class="btn sm primary" data-act="ivMove">' + (pend === "end" ? "인터뷰 마치기" : "넘어가기") + '</button><button class="btn sm ghost" data-act="ivStay">이 주제 계속</button></span></div>' : "";
+  const status = done ? round + "바퀴 인터뷰를 마쳤어요" : turns.length ? esc(curName) + " · " + cur.n + "/" + cur.cap + "번째 답 · 새 사실 " + cur.facts + " · 분류 " + nCov + "/" + IV_CATS.length + " 마침" : "";
+  const chat = '<section class="sheet chat lift"><div class="chat-log" id="chatLog">' + log + '</div><div class="chat-in">' + pendBar + '<div class="row"><textarea class="input" id="ivInput" rows="2" placeholder="' + (done ? "이번 바퀴 인터뷰를 마쳤어요. 다시 하려면 새 바퀴를 시작해 주세요." : turns.length ? "생각나는 대로 답해 주세요. Enter로 보내고 Shift+Enter로 줄을 바꿔요." : "먼저 인터뷰를 시작해 주세요.") + '" ' + (inputDisabled ? "disabled" : "") + '>' + esc(S.ui.ivDraft || "") + '</textarea><button class="btn primary" data-act="ivSend" ' + (inputDisabled ? "disabled" : "") + ' aria-label="보내기">' + I.send + '</button></div><div class="row iv-foot" style="justify-content:space-between"><span class="muted" style="font-size:11.5px">' + (S.ui.ivTree ? esc(S.ui.ivTree) + ' <a href="#tree" data-go="tree">보기</a>' : lastUser && !busy ? "마지막 메시지에 아직 답이 없어요." : status || "대화는 나만 볼 수 있게 저장돼요.") + '</span><span class="row" style="gap:6px">' + (turns.length ? '<button class="btn sm" data-act="ivTree"' + (S.ui.busy.tree || busy ? " disabled" : "") + ">" + (S.ui.busy.tree ? '<span class="spinner"></span>정리하는 중' : "마치고 생각 나무에 반영") + "</button>" + (done ? "" : '<button class="btn sm ghost" data-act="ivNewTopic">주제 바꿔 새 질문</button>') + '<button class="btn sm ghost" data-act="ivClear">대화 비우기</button>' : "") + "</span></div></div></section>";
 
   const sessionFacts = P.ledger.filter((f) => f.src === "interview");
   const side = '<aside class="stack"><section class="sheet side-card"><h4>인터뷰 초점</h4><div class="topics">' + TOPICS.map(([k, l]) => '<button class="chip ' + ((S.CHAT.topic || "auto") === k ? "on" : "") + '" data-act="ivTopic" data-v="' + k + '">' + l + "</button>").join("") + '</div><p class="muted" style="font-size:11.5px;margin-top:8px">초점을 바꾸면 다음 질문부터 반영돼요.</p></section>' +
-    '<section class="sheet side-card iv-now"><h4>지금 주제 · ' + esc(curName) + '</h4><div class="meter"><i style="width:' + Math.min(100, (cur.n / cur.cap) * 100) + '%"></i></div>' +
+    '<section class="sheet side-card iv-now">' + (done ? "<h4>" + round + "바퀴 마침</h4><p class=\"muted\" style=\"font-size:12px\">분류 " + IV_CATS.length + "개를 모두 한 번씩 들었어요. 새 바퀴는 원할 때만 시작해요.</p>" :
+      '<h4>지금 주제 · ' + esc(curName) + '</h4><div class="meter"><i style="width:' + Math.min(100, (cur.n / cur.cap) * 100) + '%"></i></div>' +
       '<div class="iv-stat"><span>답 <b>' + cur.n + "/" + cur.cap + "</b></span><span>새 사실 <b>" + cur.facts + "</b></span><span>세부 칸 <b>" + (CAT_BY[cur.cat].subs.length - catFill(P, cur.cat).miss.length) + "/" + CAT_BY[cur.cat].subs.length + "</b></span></div>" +
-      '<p class="muted" style="font-size:12px">' + (pend ? "충분히 들었어요. 다음은 " + esc(CAT_BY[pend].name) + "." : cur.dry ? "최근 " + cur.dry + "번 새 사실이 없어요. " + (IV_DRY - cur.dry) + "번 더 없으면 넘어갈 때예요." : cur.n ? "새 사실이 나오고 있어요." : "시작하면 이 주제부터 물어요.") + "</p>" +
-      '<p class="muted" style="font-size:11.5px">충분의 기준: ' + IV_DRY + "번 연속 새 사실이 없거나 " + IV_CAP + "번 답하면. 그때 Claude가 넘어갈지 물어요.</p></section>" +
+      '<p class="muted" style="font-size:12px">' + (pend === "end" ? "마지막 분류를 충분히 들었어요. 마치면 요약을 보여 드려요." : pend ? "충분히 들었어요. 다음은 " + esc(CAT_BY[pend].name) + "." : cur.dry ? "최근 " + cur.dry + "번 새 사실이 없어요. " + (IV_DRY - cur.dry) + "번 더 없으면 넘어갈 때예요." : cur.n ? "새 사실이 나오고 있어요." : "시작하면 이 주제부터 물어요.") + "</p>" +
+      '<div class="iv-round"><span>' + round + '바퀴 · 분류 ' + IV_CATS.length + "개 중 <b>" + nCov + "</b>개 마침</span>" + '<span class="dots">' + IV_CATS.map((c) => '<i class="' + ((S.CHAT.covered || []).includes(c) ? "on" : c === cur.cat ? "cur" : "") + '" title="' + esc(CAT_BY[c].name) + '"></i>').join("") + "</span></div>" +
+      '<p class="muted" style="font-size:11.5px">충분의 기준: ' + IV_DRY + "번 연속 새 사실이 없거나 " + IV_CAP + "번 답하면. 분류 " + IV_CATS.length + "개를 다 돌면 인터뷰가 끝나요.</p>") + "</section>" +
     '<section class="sheet side-card"><h4>Records 빈 곳</h4>' + ivOrder(P).slice(0, 6).map((g) => { const pc = Math.round(g.p * 100); return '<div class="gap-row"><span>' + esc(CAT_BY[g.c].name) + (g.c === pend ? " ←" : "") + '</span><span class="b"><i style="width:' + pc + "%;background:" + (pc < 30 ? "var(--signal)" : "var(--accent)") + '"></i></span><span class="v">' + pc + "%</span></div>"; }).join("") + '<p class="muted" style="font-size:11.5px;margin-top:6px">세부 칸과 기록 수로 계산해요. 자동이면 낮은 곳부터 차례로 물어요.</p></section>' +
     '<section class="sheet side-card"><h4>인터뷰로 알게 된 것 <span class="mono muted" style="font-size:11px">' + sessionFacts.length + '</span></h4><ul class="list-plain">' + (sessionFacts.slice(-6).reverse().map((f) => '<li style="padding:7px 0;font-size:12.5px"><span class="tag">' + esc(CAT_BY[f.cat].name) + "</span><span>" + esc(entryText(f)) + "</span></li>").join("") || '<li class="muted" style="font-size:12.5px">아직 없어요.</li>') + "</ul></section></aside>";
 
   return '<div class="page-head"><div><div class="eyebrow">Interview · 대화</div><h1>AI 인터뷰</h1><p class="lede">탐구가 윤곽을 그린다면 인터뷰는 세부를 채웁니다. 비어 있거나 어긋나 보이는 곳부터 하나씩 묻고, 답에서 드러난 사실은 Records에 들어가요.</p></div></div><div class="iv">' + chat + side + "</div>";
+}
+/* closing card: what this round added to Records, category by category */
+function ivSummary(P) {
+  const ch = S.CHAT, d = ch.done || {}, by = ivRoundFacts(P);
+  const ans = {}; (ch.log || []).filter((l) => l.round === d.round).forEach((l) => (ans[l.cat] = (ans[l.cat] || 0) + l.n));
+  const tot = Object.values(by).reduce((k, xs) => k + xs.length, 0);
+  const rows = IV_CATS.map((c) => { const xs = by[c] || [];
+    return '<div class="iv-sum-r"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(CAT_BY[c].name) + '</b><span class="mono muted">사실 ' + xs.length + (ans[c] ? " · 답 " + ans[c] : "") + "</span></div>" +
+      (xs.length ? "<ul>" + xs.slice(-2).reverse().map((e) => "<li>" + esc(cut(entryText(e), 90)) + "</li>").join("") + "</ul>" : '<p class="muted">새로 들어간 사실 없음</p>') + "</div>"; }).join("");
+  return '<div class="iv-done"><div class="eyebrow">Round ' + (d.round || 1) + " · 마침</div><h3>" + (d.round || 1) + '바퀴 인터뷰를 마쳤어요</h3><p class="muted">Records 분류 ' + IV_CATS.length + "개를 한 번씩 다 들었어요. 이번 바퀴에서 Records에 들어간 사실은 " + tot + "개예요. 틀린 것은 Records에서 고치거나 지우면 돼요.</p>" +
+    '<div class="iv-sum">' + rows + '</div><div class="row"><button class="btn primary" data-act="ivRound">새 바퀴 시작</button><button class="btn" data-act="go" data-view="ledger">Records에서 보기</button><span class="muted" style="font-size:12px">새 바퀴는 원할 때만 시작해요.</span></div></div>';
 }
 function fmtTime(iso) { if (!iso) return ""; const d = new Date(iso); return d.getMonth() + 1 + "/" + d.getDate() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
 function afterInterview() {
@@ -2866,11 +2912,25 @@ const ACT = {
   evEdit: (a) => { S.ui.editEvent = a.dataset.id; if (S.ui.view !== "gantt") goView("gantt"); else { render(); window.scrollTo({ top: 0, behavior: "smooth" }); } },
   evEditClose: () => { S.ui.editEvent = null; render(); },
   insight: (a) => runInsight(a.dataset.id),
-  ivStart: () => { const ch = S.CHAT; ch.turns = []; ch.treeAt = 0; S.ui.ivTree = null; ch.pend = null; ch.cur = ivNewCur(ch.topic && ch.topic !== "auto" ? ch.topic : ch.cur && ch.cur.n ? ivNext(S.P) : (ch.cur || {}).cat || ivOrder(S.P)[0].c); ivRun(true); },
+  ivStart: () => {
+    const ch = S.CHAT; ch.turns = []; ch.treeAt = 0; S.ui.ivTree = null; ch.pend = null;
+    if (ch.done) ivNewRound(S.P);
+    else if (ch.topic && ch.topic !== "auto") ch.cur = ivNewCur(ch.topic);
+    else if (ch.cur && ch.cur.n) { const nx = ivNext(S.P); if (nx) ivGo(nx); else { ivFinish(); ivNewRound(S.P); } }
+    ivRun(true);
+  },
   ivMove: () => {
     const ch = S.CHAT, nx = ch.pend; if (!nx || S.ui.busy.iv) return;
+    if (nx === "end") { ivFinish(); S.ui.ivTree = null; markDirty(); render(); return; }
     ivGo(nx); ch.turns.push({ role: "user", content: "(지금 주제는 충분해요. 다음 주제 '" + CAT_BY[nx].name + "'로 넘어가 첫 질문을 해 주세요)", at: nowISO(), meta: "next", label: CAT_BY[nx].name });
     S.ui.ivTree = null; markDirty(); ivRun(false);
+  },
+  ivRound: () => {
+    if (S.ui.busy.iv) return;
+    const c = ivNewRound(S.P), ch = S.CHAT; S.ui.ivTree = null;
+    if (!ch.turns.length) { ivRun(true); return; }
+    ch.turns.push({ role: "user", content: "(새 바퀴를 시작해요. 첫 주제 '" + CAT_BY[c].name + "'의 첫 질문을 해 주세요)", at: nowISO(), meta: "next", label: CAT_BY[c].name });
+    markDirty(); ivRun(false);
   },
   ivStay: () => { const ch = S.CHAT; if (!ch.cur) return; ch.cur.cap = ch.cur.n + 4; ch.cur.dry = 0; ch.pend = null; markDirty(); render(); toast("이 주제를 4번 더 이어가요."); },
   ivSend: () => {
@@ -2892,7 +2952,7 @@ const ACT = {
     S.ui.busy.tree = false; render();
   },
   ivRetry: () => { const t = S.CHAT.turns; if (t.length && t[t.length - 1].role === "user") ivRun(false); else ivRun(!t.length); },
-  ivTopic: (a) => { const ch = S.CHAT, v = a.dataset.v; ch.topic = v; if (v !== "auto" && (!ch.cur || ch.cur.cat !== v)) ch.cur = ivNewCur(v); if (v !== "auto") ch.pend = null; markDirty(); render(); toast("다음 질문부터 '" + (TOPICS.find((t) => t[0] === a.dataset.v) || [0, ""])[1] + "'에 초점을 맞춰요."); },
+  ivTopic: (a) => { const ch = S.CHAT, v = a.dataset.v; ch.topic = v; if (v !== "auto") { ch.done = null; if (!ch.cur || ch.cur.cat !== v) ch.cur = ivNewCur(v); ch.pend = null; } markDirty(); render(); toast("다음 질문부터 '" + (TOPICS.find((t) => t[0] === a.dataset.v) || [0, ""])[1] + "'에 초점을 맞춰요."); },
   ivNewTopic: () => { if (S.ui.busy.iv) return; S.CHAT.turns.push({ role: "user", content: "(이 질문은 넘어가고, 현재 초점에 맞는 다른 질문을 해 주세요)", at: nowISO(), meta: true }); markDirty(); ivRun(false); },
   ivClear: () => {
     if (!S.ui.confirmIvClear) { S.ui.confirmIvClear = true; toast("한 번 더 누르면 대화가 비워져요. 알게 된 사실은 남아요."); setTimeout(() => (S.ui.confirmIvClear = false), 3500); return; }
