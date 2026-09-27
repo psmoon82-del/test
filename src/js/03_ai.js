@@ -55,7 +55,7 @@ function aiErrCopy(c) {
     refused: "Claude가 이 요청에는 답하지 않았어요. 표현을 바꿔 다시 시도해 주세요.",
     invalid_json: "답을 정리하는 데 실패했어요. 한 번 더 눌러 주세요.",
     prompt_too_large: "보낼 내용이 너무 길어요. 기록 일부를 줄여 주세요.",
-    empty_completion: "빈 답이 돌아왔어요. 다시 시도해 주세요.",
+    empty_completion: "빈 답이 돌아왔어요. 다시 누르면 더 가벼운 방식으로 시도해요.",
     cancelled: "중단했어요.",
   })[c] || "연결이 불안정해 답을 받지 못했어요. 다시 시도해 주세요.";
 }
@@ -63,8 +63,15 @@ const PERMANENT = new Set(["not_granted", "sampling_disabled", "not_declared", "
 function aiAvailable() { return !!S.sample && !S.aiOff; }
 async function aiJSON(prompt, opts) {
   if (!aiAvailable()) throw { code: "capability_disabled" };
-  try { return await S.sample.json(prompt, Object.assign({ modelTier: "default" }, opts || {})); }
-  catch (e) { if (!(e && e.code === "cancelled")) noteErr("ai", e); if (e && PERMANENT.has(e.code)) S.aiOff = e.code; throw e; }
+  const o = Object.assign({ modelTier: "default" }, opts || {});
+  if (S.aiLite) o.modelTier = "quick";
+  try { const r = await S.sample.json(prompt, o); S.diag.ai = null; renderDiag(); return r; }
+  catch (e) {
+    if (!(e && e.code === "cancelled")) noteErr("ai", e);
+    if (e && e.code === "empty_completion") S.aiLite = true;
+    if (e && PERMANENT.has(e.code)) S.aiOff = e.code;
+    throw e;
+  }
 }
 
 const STYLE_RULES = "한국어로 쓰세요. 담백하고 구체적으로. 칭찬·과장·상담사 말투 금지. 사용자의 응답·메모에 있는 근거만 사용하고 추측으로 사실을 만들지 마세요. 진단하거나 단정하지 말고 '~로 보인다', '~일 수 있다' 수준으로.";
@@ -153,22 +160,40 @@ function interviewRules(P, topic) {
   } else focus = "사용자가 고른 주제: " + (TOPICS.find((t) => t[0] === topic) || [0, topic])[1];
   return "당신은 자기이해 도구 '라이프 독'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
     "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 재정·투자의 세부 숫자, 건강 진단 같은 민감한 주제는 사용자가 먼저 꺼내지 않으면 파고들지 않는다.\n- 진단하거나 성격을 단정하지 않는다.\n" +
-    '응답은 반드시 JSON 하나: {"reply": "사용자에게 할 말(마지막은 질문 하나)", "facts": [{"area": "basics|wheel|traits|values|energy|work|family|loves|thoughts|wants|timeline", "text": "사용자가 이번 메시지에서 직접 말한 사실, 3인칭 한 문장"}], "wants": [{"type": "have|do|be|learn|give", "text": "...", "horizon": "1y|3y|5y|10y|someday"}], "events": [{"year": "YYYY 또는 YYYY-MM", "label": "...", "lane": "me|family|work|home"}]}\n' +
-    "- facts, wants, events는 사용자가 이번 메시지에서 실제로 말한 것만. 추측 금지. 없으면 빈 배열. 이미 알려진 사실과 같은 내용은 넣지 않는다.\n\n" +
-    "[이번 인터뷰 초점] " + focus + "\n\n[프로필 요약]\n" + digest(P, { facts: 50, log: 6 });
+    "[이번 인터뷰 초점] " + focus + "\n\n[프로필 요약]\n" + digest(P, S.aiLite ? { facts: 20 } : { facts: 50, log: 6 });
+}
+/* format goes last so Claude answers in JSON rather than prose */
+const IV_FORMAT = "[응답 형식] 인사말이나 설명을 JSON 밖에 쓰지 말고, 아래 JSON 하나로만 답하세요. 사용자에게 할 말은 모두 reply 안에 넣습니다.\n" +
+  '{"reply": "사용자에게 할 말(마지막은 질문 하나)", "facts": [{"area": "basics|wheel|traits|values|energy|work|family|loves|thoughts|wants|timeline", "text": "사용자가 이번 메시지에서 직접 말한 사실, 3인칭 한 문장"}], "wants": [{"type": "have|do|be|learn|give", "text": "...", "horizon": "1y|3y|5y|10y|someday"}], "events": [{"year": "YYYY 또는 YYYY-MM", "label": "...", "lane": "me|family|work|home"}]}' +
+  "\n" + "- facts, wants, events는 사용자가 이번 메시지에서 실제로 말한 것만. 추측 금지. 없으면 빈 배열. 이미 알려진 사실과 같은 내용은 넣지 않는다.";
+function proseReply(text) {
+  const t = String(text || "").trim();
+  if (!t) return "";
+  const m = t.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (m) { try { return JSON.parse('"' + m[1] + '"'); } catch (e) { return m[1]; } }
+  if (/^[\[{]/.test(t)) return "";
+  return t.replace(/```[a-z]*/g, "").trim();
 }
 /* opening=true: ask the first question. Otherwise the caller has already appended the user's turn to S.CHAT.turns. */
 async function aiInterviewTurn(opening) {
   const P = S.P;
   const rules = interviewRules(P, S.CHAT.topic || "auto");
   let input;
-  if (opening) input = [{ role: "user", content: rules + "\n\n인터뷰를 시작합니다. 짧게 인사하고, 초점에 맞는 첫 질문을 해 주세요." }];
+  if (opening) input = [{ role: "user", content: rules + "\n\n인터뷰를 시작합니다. reply에 짧은 인사와 초점에 맞는 첫 질문을 담아 주세요.\n\n" + IV_FORMAT }];
   else {
     let hist = S.CHAT.turns.slice(-24).map((t) => ({ role: t.role, content: String(t.content) }));
     while (hist.length && hist[hist.length - 1].role !== "user") hist.pop();
-    input = [{ role: "user", content: rules + "\n\n(여기까지가 지침입니다. 이어지는 것이 실제 대화입니다.)" }].concat(hist);
+    input = [{ role: "user", content: rules + "\n\n" + IV_FORMAT + "\n\n(여기까지가 지침입니다. 이어지는 것이 실제 대화입니다.)" }].concat(hist);
+    if (input.length > 1) { const last = input[input.length - 1]; input[input.length - 1] = { role: "user", content: last.content + "\n\n(답은 위 [응답 형식]의 JSON 하나로)" }; }
   }
-  const r = await aiJSON(input, { cache: false });
+  let r;
+  try { r = await aiJSON(input, { cache: false }); }
+  catch (e) {
+    /* Claude answered in prose instead of JSON: keep the answer, skip fact extraction for this turn */
+    const t = e && e.code === "invalid_json" ? proseReply(e.text) : "";
+    if (t) return { reply: t, facts: [], wants: [], events: [] };
+    throw e;
+  }
   if (!r || !r.reply) throw { code: "invalid_json" };
   return r;
 }

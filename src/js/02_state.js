@@ -12,7 +12,7 @@ const S = {
     busy: {},
   },
   saveState: "idle",
-  diag: { caps: null, perms: null, save: null, ai: null },
+  diag: { caps: null, perms: null, save: null, ai: null, writes: 0, lastWrite: null },
 };
 
 function blankProfile() {
@@ -166,12 +166,12 @@ function flush() {
   if (S.mode !== "cloud" || !S.db || !S.uid) { dirty.clear(); return; }
   const names = Array.from(dirty); dirty.clear();
   if (!names.length) return;
-  setSave("saving");
+  setSave("saving"); renderDiag();
   writing = writing.then(async () => {
     for (const n of names) {
-      try { await S.db.doc(docPath(n)).set(clone(DOCS[n]())); }
+      try { await S.db.doc(docPath(n)).set(clone(DOCS[n]())); S.diag.writes++; S.diag.lastWrite = new Date().toLocaleTimeString(); }
       catch (e) {
-        if (e && e.code === "unavailable") { try { await new Promise((r) => setTimeout(r, 800 + Math.random() * 600)); await S.db.doc(docPath(n)).set(clone(DOCS[n]())); continue; } catch (e2) { e = e2; } }
+        if (e && e.code === "unavailable") { try { await new Promise((r) => setTimeout(r, 800 + Math.random() * 600)); await S.db.doc(docPath(n)).set(clone(DOCS[n]())); S.diag.writes++; S.diag.lastWrite = new Date().toLocaleTimeString(); continue; } catch (e2) { e = e2; } }
         noteErr("save", e); setSave("err"); toast("저장하지 못했어요 (" + ((e && e.code) || "오류") + "). 잠시 후 다시 시도해 주세요.");
         dirty.add(n); return;
       }

@@ -12,9 +12,12 @@
   const delay = (ms) => new Promise((r) => setTimeout(r, ms));
   const textOf = (input) => (typeof input === "string" ? input : input.map((t) => t.content).join("\n"));
   async function json(input, opts) {
+    (window.__SENT__ = window.__SENT__ || []).push({ input, opts });
     await delay(window.__AI_DELAY__ || 400);
     const t = textOf(input);
     if (window.__AI_FAIL__) throw { code: window.__AI_FAIL__, message: "mock" };
+    if (window.__AI_PROSE_ONCE__) { const tx = window.__AI_PROSE_ONCE__; window.__AI_PROSE_ONCE__ = null; throw { code: "invalid_json", message: "mock", text: tx }; }
+    if (window.__AI_FAIL_ONCE__) { const c = window.__AI_FAIL_ONCE__; window.__AI_FAIL_ONCE__ = null; throw { code: c, message: "mock" }; }
     if (t.includes('"archetype"')) return { archetype: "조용한 설계자", headline: "흩어진 것을 모아 구조를 짜야 마음이 놓이는 사람", essence: "상황을 끝까지 파악한 뒤에야 방향을 정하는 신중함이 일과 생활 전반에 깔려 있다. 통신요금 표, 집 정리 동선, 여행 시간표처럼 스스로 체계를 설계하는 일에서 에너지를 얻는다. 다만 조율과 회의가 일의 본체가 되면서 몰입이 줄었고, 스스로 만드는 일에 대한 갈증이 세컨잡 고민으로 이어진다.", strengths: ["상황 파악 후 방향 결정", "생활을 시스템으로 설계", "기술 변화를 먼저 읽음"], shadows: ["결정적 순간을 미루는 회피", "조율에 에너지를 소진"], drives: ["자기주도", "시간의 여유", "가족"], tasteDNA: ["깊은 국물과 구운 맛", "완결된 이야기", "손에 잡히는 기기"], nowFocus: "몇 달째 없는 몰입을 되찾을 작은 만들기 프로젝트", question: "하루 4시간만 일해도 된다면, 남은 시간에 무엇을 만들겠습니까?", gaps: "가족 관계와 건강에 대한 응답이 적어 확신하기 어렵다." };
     if (t.includes('"themes"')) {
       const ids = Array.from(t.matchAll(/^([a-z]+_[A-Za-z0-9_]+) \|/gm)).map((m) => m[1]);

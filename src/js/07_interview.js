@@ -7,7 +7,7 @@ function viewInterview() {
     log = '<div style="margin:auto;max-width:460px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;padding:30px 10px">' +
       '<div class="eyebrow">Sea trial</div><h2 style="font-size:22px">빈 곳을 대화로 채웁니다</h2>' +
       '<p class="muted">Claude가 지금까지의 프로필을 읽고, 가장 비어 있거나 서로 어긋나 보이는 곳부터 한 번에 하나씩 묻습니다. 답에서 드러난 사실은 자동으로 프로필에 쌓이고, 원하지 않으면 바로 지울 수 있어요.</p>' +
-      (aiAvailable() ? '<button class="btn accent" data-act="ivStart">' + I.chat + "인터뷰 시작</button>" : '<p class="banner">' + esc(S.aiOff ? aiErrMsg({ code: S.aiOff }) : "이 화면에서는 Claude 연결을 쓸 수 없어요. Claude 앱에서 열어 주세요.") + "</p>") + "</div>";
+      (S.ui.ivErr ? '<p class="banner" style="text-align:left">' + esc(S.ui.ivErr) + "</p>" : "") + (aiAvailable() ? '<button class="btn accent" data-act="ivStart">' + I.chat + (S.ui.ivErr ? "다시 시작" : "인터뷰 시작") + "</button>" : '<p class="banner">' + esc(S.aiOff ? aiErrMsg({ code: S.aiOff }) : "이 화면에서는 Claude 연결을 쓸 수 없어요. Claude 앱에서 열어 주세요.") + "</p>") + "</div>";
   } else {
     log = turns.map((t, ti) => {
       if (t.role === "user" && t.meta) return '<div class="muted" style="align-self:center;font-size:11.5px">— 다른 질문 요청 —</div>';
