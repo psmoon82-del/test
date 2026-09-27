@@ -1,0 +1,7 @@
+p, errs = mkpage(b, 390, 844)
+p.evaluate("location.hash='#map'"); time.sleep(8)
+print(p.evaluate("[!!window.d3, !!document.querySelector('#mapMsg'), document.querySelector('#mapSvg') && document.querySelector('#mapSvg').clientWidth, document.querySelectorAll('#mapSvg g.nd').length]"))
+print(errs)
+p.click(".tabbar [data-go=home]"); time.sleep(0.3)
+p.evaluate("location.hash='#map'"); time.sleep(2)
+print(p.evaluate("[!!window.d3, !!document.querySelector('#mapMsg'), document.querySelectorAll('#mapSvg g.nd').length]"))

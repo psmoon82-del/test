@@ -1,0 +1,9 @@
+# Personal data — never commit (see CLAUDE.md "주의")
+seed/seed_owner.json
+seed/build_seed.py
+
+# Test outputs (screenshots show seed data)
+test/shots/
+test/index.html
+
+__pycache__/
