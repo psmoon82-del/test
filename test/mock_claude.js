@@ -20,6 +20,13 @@
     if (window.__AI_FAIL__) throw { code: window.__AI_FAIL__, message: "mock" };
     if (window.__AI_PROSE_ONCE__) { const tx = window.__AI_PROSE_ONCE__; window.__AI_PROSE_ONCE__ = null; throw { code: "invalid_json", message: "mock", text: tx }; }
     if (window.__AI_FAIL_ONCE__) { const c = window.__AI_FAIL_ONCE__; window.__AI_FAIL_ONCE__ = null; throw { code: c, message: "mock" }; }
+    if (t.includes('{"answer"')) return t.includes("직접 정리한 자기 기록") ? { answer: "기록을 보면 조립과 설계를 좋아하시니, 주말엔 프라모델과 캠핑 장비 정비를 추천해요.", used: ["좋아하는 것: 프라모델", "에너지: 손으로 만들기"] } : { answer: "주말 취미로는 등산, 독서, 요리가 무난해요." };
+    if (t.includes('{"items"')) return { items: [
+      { q: "갑자기 하루 휴가가 생기면?", opts: ["집에서 쉰다", "혼자 드라이브", "가족과 외출"], cat: "routine", pred: 0, conf: 70, why: "주말에 집에서 쉬는 걸 좋아한다고 적었어요." },
+      { q: "새 전자기기를 살 때 먼저 하는 일은?", opts: ["리뷰를 몇 시간 찾아본다", "매장에서 만져 본다"], cat: "taste", pred: 0, conf: 80, why: "기기 구경과 세팅에서 에너지를 얻는다고 했어요." },
+      { q: "회의에서 의견이 갈리면?", opts: ["데이터를 먼저 모은다", "분위기를 본다"], cat: "work", pred: 0, conf: 65, why: "근거를 먼저 확인하는 편이라고 답했어요." },
+      { q: "보너스가 들어오면?", opts: ["저축", "갖고 싶던 물건", "가족 여행"], cat: "money", pred: 2, conf: 55, why: "가족과의 여행을 원하는 것에 적었어요." },
+      { q: "스트레스가 쌓이면?", opts: ["술자리", "혼자 뭔가 만든다"], cat: "mind", pred: 1, conf: 60, why: "만들기에서 충전된다고 했어요." }] };
     if (t.includes('"topics"')) {
       if (t.includes("이번 AI 인터뷰 대화")) return { topics: [{ area: "fun", label: "건담 조립", under: "", memo: "조립할 때 시간 가는 줄 모른다고 했다.", weight: 2 }] };
       return { topics: [{ area: "health", label: "간 수치 관리", under: "", memo: "r-GTP가 3년째 오르고 있다.", weight: 3 }, { area: "work", label: "이직 고민", under: "", memo: "지금 일의 의미를 다시 묻고 있다.", weight: 2 }, { area: "money", label: "연금 준비", under: "은퇴", memo: "60세 은퇴를 생각한다.", weight: 1 }, { area: "fun", label: "은퇴", under: "", memo: "이미 있는 주제", weight: 1 }] };

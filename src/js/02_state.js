@@ -5,6 +5,7 @@ const S = {
   AI: { portrait: null, map: null, insights: {} },
   CHAT: { turns: [], topic: "auto" },
   LOG: { items: [] },
+  PLAY: { compare: [], guess: [] },
   NUDGE: null,
   ui: {
     view: "home", ch: null, step: 0,
@@ -29,6 +30,7 @@ function blankProfile() {
     tree: { nodes: [] },
     wants: { items: [] },
     timeline: { events: [] },
+    decisions: { items: [] },
     ledger: [],
     hints: {}, prior: {}, progressLog: [], done: {}, chapterAt: {},
     meta: { migration: null, exports: [], treeRejected: [] },
@@ -37,7 +39,7 @@ function blankProfile() {
 function ensureShape(P) {
   const b = blankProfile();
   for (const k in b) if (P[k] == null) P[k] = b[k];
-  for (const k of ["basics", "wheel", "ipip", "values", "energy", "loves", "tree", "wants", "timeline", "meta"]) {
+  for (const k of ["basics", "wheel", "ipip", "values", "energy", "loves", "tree", "wants", "timeline", "decisions", "meta"]) {
     for (const kk in b[k]) if (P[k][kk] == null) P[k][kk] = b[k][kk];
   }
   if (!P.loves.seen) P.loves.seen = {};
@@ -254,9 +256,9 @@ const revStr = () => ((S.P?.rev || 0) + 1) + "판";
 /* ---------------- persistence ----------------
    The profile is split into documents so no single one nears the store's 256 KiB cap.
    flush() writes only documents whose JSON changed since the last successful save. */
-const SPLIT = { a_taste: "loves", a_tree: "tree", a_goals: "wants", a_history: "timeline" };
+const SPLIT = { a_taste: "loves", a_tree: "tree", a_goals: "wants", a_history: "timeline", a_decide: "decisions" };
 const SPLIT_KEYS = new Set(Object.values(SPLIT).concat(["ledger"]));
-const DOC_NAMES = ["a_core"].concat(Object.keys(SPLIT), CAT_IDS.map((c) => "a_led_" + c), ["ai", "chat", "log", "nudge"]);
+const DOC_NAMES = ["a_core"].concat(Object.keys(SPLIT), CAT_IDS.map((c) => "a_led_" + c), ["ai", "chat", "log", "nudge", "play"]);
 const LEGACY_DOCS = ["profile"];
 const DOC_LIMIT = 240 * 1024;
 const lastSaved = {};
@@ -269,7 +271,7 @@ function stateDocs() {
   const d = { a_core: core };
   for (const [name, key] of Object.entries(SPLIT)) d[name] = { [key]: P[key] };
   CAT_IDS.forEach((c) => { const items = P.ledger.filter((e) => e.cat === c); if (items.length || knownDocs.has("a_led_" + c)) d["a_led_" + c] = { items }; });
-  d.ai = S.AI; d.chat = S.CHAT; d.log = S.LOG;
+  d.ai = S.AI; d.chat = S.CHAT; d.log = S.LOG; d.play = S.PLAY;
   if (S.NUDGE) d.nudge = S.NUDGE;
   return d;
 }
@@ -345,6 +347,7 @@ async function boot() {
   if (docs.ai) S.AI = Object.assign({ portrait: null, map: null, insights: {} }, docs.ai);
   if (docs.chat) S.CHAT = Object.assign({ turns: [], topic: "auto" }, docs.chat);
   if (docs.log) S.LOG = Object.assign({ items: [] }, docs.log);
+  if (docs.play) S.PLAY = Object.assign({ compare: [], guess: [] }, docs.play);
   if (docs.nudge) S.NUDGE = docs.nudge;
   if (docs.a_core) { S.P = assemble(docs); if (ensureTreeAreas(S.P)) flushSoon(); return; }
   const legacy = docs.profile;

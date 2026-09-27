@@ -1,5 +1,5 @@
 /* ============================================================ shell, router, events */
-const ROUTES = { home: viewHome, ledger: viewLedger, journey: viewJourney, tree: viewTree, interview: viewInterview, log: viewLog, export: viewExport, review: viewReview, portrait: viewPortrait, map: viewMap, gantt: viewGantt, metrics: viewMetrics };
+const ROUTES = { home: viewHome, ledger: viewLedger, journey: viewJourney, tree: viewTree, interview: viewInterview, log: viewLog, export: viewExport, decide: viewDecide, guess: viewGuess, review: viewReview, portrait: viewPortrait, map: viewMap, gantt: viewGantt, metrics: viewMetrics };
 const AFTER = { interview: afterInterview, map: afterMap, log: applyLogSearch, ledger: applyLedSearch, tree: afterTree, journey: () => { if (curCh().id === "thoughts") afterTree(); } };
 const DRAWING_VIEWS = ["portrait", "map", "gantt", "metrics"];
 
@@ -7,7 +7,7 @@ function buildShell() {
   const nav = (v, icon, label) => '<a href="#' + v + '" data-go="' + v + '">' + icon + "<span>" + label + "</span></a>";
   $("#app").innerHTML =
     '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">Atlas</div></div></div><div class="brand-who"><span id="rOwner"></span><span class="mono" id="rRev"></span></div></div>' +
-    '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "개요") + nav("ledger", I.ledger, "Records") + nav("journey", I.route, "탐구") + nav("interview", I.chat, "AI 인터뷰") + nav("log", I.log, "기록") + nav("tree", I.tree, "생각 나무") +
+    '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "개요") + nav("ledger", I.ledger, "Records") + nav("journey", I.route, "탐구") + nav("interview", I.chat, "AI 인터뷰") + nav("guess", I.target, "AI 맞히기") + nav("log", I.log, "기록") + nav("decide", I.decide, "결정 일지") + nav("tree", I.tree, "생각 나무") +
     '<div class="nav-label">한눈에 보기</div>' + nav("portrait", I.person, "자화상") + nav("map", I.map, "Network") + nav("gantt", I.gantt, "연표") + nav("metrics", I.chart, "지표") +
     '<div class="nav-label">꺼내 쓰기</div>' + nav("export", I.pack, "Pack") + "</nav>" +
     '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div><details class="diag"><summary>연결 상태</summary><div class="diag-body"></div></details></div></aside>' +
@@ -77,6 +77,7 @@ document.addEventListener("input", (e) => {
   if (el.id === "ledQ") { S.ui.ledQ = el.value; applyLedSearch(); return; }
   if (el.id === "logText") { S.ui.logDraft = el.value; return; }
   if (el.id === "ivInput") { S.ui.ivDraft = el.value; return; }
+  if (el.id === "cmpQ") { S.ui.cmpDraft = el.value; return; }
   if (!el.dataset || !el.dataset.bind) return;
   let v = el.value;
   if (el.dataset.type === "num") v = v.trim() === "" ? null : parseInt(v.replace(/\D/g, ""), 10) || null;
@@ -201,6 +202,33 @@ const ACT = {
   thWeight: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; S.ui.treeMore = true; delete n.ai; n.weight = n.weight === +a.dataset.v ? null : +a.dataset.v; needDirty(); render(); },
   actAdd: () => { const el = $("#newAct"); const v = el && el.value.trim(); if (!v) return; S.P.energy.custom.push({ id: uid("a"), t: v }); needDirty(); render(); const ne = $("#newAct"); if (ne) ne.focus(); },
   actDel: (a) => { const id = a.dataset.id; S.P.energy.custom = S.P.energy.custom.filter((x) => x.id !== id); delete S.P.energy.acts[id]; needDirty(); render(); },
+  /* decisions */
+  decAdd: () => decAdd(),
+  decConf: (a) => { S.ui.decConf = +a.dataset.v; $$("#decConf button").forEach((b) => b.classList.toggle("on", b.dataset.v === a.dataset.v)); },
+  decOpen: (a) => { S.ui.decOpen = S.ui.decOpen === a.dataset.id ? null : a.dataset.id; S.ui.decReview = null; S.ui.confirmDel = null; render(); },
+  decSet: (a) => { const d = S.P.decisions.items[+a.dataset.i]; if (!d) return; const k = a.dataset.k, v = k === "conf" ? +a.dataset.v : a.dataset.v; d[k] = d[k] === v && k !== "conf" ? null : v; needDirty(); render(); },
+  decReview: (a) => { S.ui.decReview = a.dataset.id; render(); },
+  decDone: (a) => { const d = S.P.decisions.items.find((x) => x.id === a.dataset.id); if (!d) return; if (!d.met) { toast("기대와 비교해 어땠는지 골라 주세요."); return; } d.status = "done"; d.reviewedAt = nowISO(); S.ui.decOpen = null; bumpRev("결정 돌아봄 · " + cut(d.title, 16)); needDirty(); render(); toast("돌아보기를 마쳤어요."); },
+  decLater: (a) => { const d = S.P.decisions.items.find((x) => x.id === a.dataset.id); if (!d) return; d.due = addMonths(localDate(), 1); S.ui.decOpen = null; needDirty(); render(); toast(d.due + "에 다시 알려 드릴게요."); },
+  decDel: (a) => { S.P.decisions.items = S.P.decisions.items.filter((x) => x.id !== a.dataset.id); S.ui.confirmDel = null; S.ui.decOpen = null; needDirty(); render(); toast("결정을 지웠어요."); },
+  /* guess */
+  gNew: async () => {
+    if (S.ui.busy.guess) return; S.ui.busy.guess = true; S.ui.gErr = null; render();
+    try { await aiGuessRound(); } catch (e) { S.ui.gErr = aiErrMsg(e); }
+    S.ui.busy.guess = false; render();
+  },
+  gAns: (a) => guessAnswer(+a.dataset.v),
+  gNext: () => guessNext(),
+  /* pack compare */
+  cmpEx: () => { const p = PACK_BY[S.ui.pack] || PACKS[0]; S.ui.cmpDraft = CMP_EX[p.id] || CMP_EX.all; render(); },
+  cmpRun: async () => {
+    const el = $("#cmpQ"), q = el && el.value.trim(); if (!q) { el && el.focus(); toast("비교할 질문을 적어 주세요."); return; }
+    if (S.ui.busy.cmp) return; S.ui.busy.cmp = true; S.ui.cmpErr = null; S.ui.cmpDraft = q; render();
+    try { await aiCompare(PACK_BY[S.ui.pack] || PACKS[0], q); S.ui.cmpDraft = ""; } catch (e) { S.ui.cmpErr = aiErrMsg(e); }
+    S.ui.busy.cmp = false; S.ui.cmpStep = 0; render();
+  },
+  cmpPick: (a) => { const c = cmpList().find((x) => x.id === a.dataset.id); if (!c) return; c.pick = c.pick === a.dataset.v ? null : a.dataset.v; markDirty(); render(); },
+  cmpShow: (a) => { S.ui.cmpSel = a.dataset.id; render(); },
   /* ledger */
   ledCat: (a) => { S.ui.ledCat = a.dataset.id || null; S.ui.ledEdit = null; render(); },
   ledOpen: (a) => { S.ui.ledCat = a.dataset.id || null; S.ui.ledEdit = null; goView("ledger"); },

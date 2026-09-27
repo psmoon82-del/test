@@ -56,6 +56,10 @@ function packText(P, pack) {
     const ev = P.timeline.events.filter((e) => e.s).sort((a, c) => ym2num(a.s) - ym2num(c.s));
     if (ev.length) { L.push("", "## 연대기"); ev.forEach((e) => L.push("- " + fmtYM(e.s) + (e.e ? "~" + fmtYM(e.e) : "") + " " + e.label + (e.est ? " · 추정" : ""))); }
   }
+  if (part("decisions") && P.decisions.items.length) {
+    L.push("", "## 결정 일지");
+    P.decisions.items.slice().sort((a, c) => String(c.date).localeCompare(String(a.date))).slice(0, 10).forEach((d) => L.push("- " + fmtYM(d.date) + " " + d.title + (d.why ? ": " + cut(d.why, 120) : "") + " (확신 " + (d.conf || "?") + "%" + (d.status === "done" ? ", 결과 " + ((DEC_MET.find((x) => x[0] === d.met) || [0, "?"])[1]) + (d.lesson ? ", 배운 점: " + cut(d.lesson, 120) : "") : ", 진행 중") + ")"));
+  }
   if (part("log")) {
     const rs = S.LOG.items.slice().sort((a, c) => String(c.date).localeCompare(String(a.date))).slice(0, 15);
     if (rs.length) { L.push("", "## 최근 기록"); rs.forEach((r) => L.push("- " + fmtYM(r.date) + " " + (RT_BY[r.type]?.name || "") + ": " + cut(r.text, 200))); }
@@ -93,6 +97,11 @@ const XL_SHEETS = [
     list: (P) => P.timeline.events,
     toItem: (r) => { const l = String(r.이름 || "").trim(); if (!l) return null; const s = normYM(r.시작), e = normYM(r.끝); return { lane: byName(LANES, String(r.구분 || "").trim()) || "me", label: l, s: s.ok ? s.v : null, e: e.ok ? e.v : null, est: yes(r.추정), note: String(r.메모 || "") }; },
     add: (P, it) => P.timeline.events.push(Object.assign({ id: uid("e"), kind: it.e ? "phase" : "milestone", src: "엑셀" }, it)) },
+  { name: "결정일지", key: "decisions",
+    rows: (P) => P.decisions.items.map((d) => ({ id: d.id, 날짜: d.date || "", 결정: d.title, 분야: d.area && CAT_BY[d.area] ? CAT_BY[d.area].name : "", 상황: d.situation || "", 선택지: d.options || "", 이유: d.why || "", 기대: d.expect || "", 확신: d.conf || "", 다시볼날: d.due || "", 결과: d.result || "", 기대대비: (DEC_MET.find((x) => x[0] === d.met) || [0, ""])[1], 배운점: d.lesson || "" })),
+    list: (P) => P.decisions.items,
+    toItem: (r) => { const t = String(r.결정 || "").trim(); if (!t) return null; return { title: t, date: String(r.날짜 || "") || localDate(), area: byName(LEDGER_CATS, String(r.분야 || "").trim()), situation: String(r.상황 || ""), options: String(r.선택지 || ""), why: String(r.이유 || ""), expect: String(r.기대 || ""), conf: clamp(+r.확신 || 70, 0, 100), due: String(r.다시볼날 || "") || null, result: String(r.결과 || ""), met: pairId(DEC_MET, String(r.기대대비 || "")), lesson: String(r.배운점 || "") }; },
+    add: (P, it) => P.decisions.items.push(Object.assign({ id: uid("d"), status: it.result ? "done" : "open", quality: null, outcome: null, at: nowISO() }, it)) },
   { name: "기록", key: "log",
     rows: () => S.LOG.items.map((r) => ({ id: r.id, 종류: RT_BY[r.type]?.name || r.type, 날짜: r.date || "", 내용: r.text })),
     list: () => S.LOG.items,
@@ -194,7 +203,7 @@ function viewExport() {
   const hist = P.meta.exports.slice(-8).reverse();
   const log = '<section class="sheet pad"><h3 style="margin-bottom:8px">내보낸 기록</h3><ul class="list-plain">' + (hist.length ? hist.map((x) => '<li><span class="mono muted" style="font-size:11.5px;min-width:92px">' + fmtDot(x.at) + " " + fmtTime(x.at).split(" ")[1] + "</span><span>" + esc(({ copy: "복사", md: ".md 저장", json: "JSON 저장", xlsx: "엑셀 저장", import: "엑셀 올리기" })[x.kind] || x.kind) + (x.pack ? " · " + esc(PACK_BY[x.pack]?.name || x.pack) : "") + "</span></li>").join("") : '<li class="muted">아직 내보낸 적이 없어요.</li>') + "</ul></section>";
   return '<div class="page-head"><div><div class="eyebrow">Pack · 꺼내 쓰기</div><h1>Pack</h1><p class="lede">필요한 일에 맞는 부분만 골라 다른 사람이나 AI가 바로 읽을 수 있는 글로 만들어요. 건강·재정 정보도 해당 Pack에 포함돼요.</p></div></div>' +
-    packs + '<div class="export-grid">' + preview + '<div class="stack">' + files + log + "</div></div>";
+    packs + cmpSection(pack) + '<div class="export-grid">' + preview + '<div class="stack">' + files + log + "</div></div>";
 }
 function importPreview(p) {
   const tot = p.basics.length + p.sheets.reduce((s, o) => s + o.add.length + o.upd.length, 0);

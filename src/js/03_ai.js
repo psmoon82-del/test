@@ -12,7 +12,7 @@ function situational(P) {
   return out;
 }
 /* shared helpers for ledger entries and the think tree */
-const SRC_LABEL = { interview: "AI 인터뷰", record: "기록에서 추출", nudge: "주간 질문", import: "엑셀 가져오기", "": "직접 입력" };
+const SRC_LABEL = { interview: "AI 인터뷰", record: "기록에서 추출", nudge: "주간 질문", import: "엑셀 가져오기", guess: "AI 맞히기", "": "직접 입력" };
 function entryText(e) { return (e.label ? e.label + ": " : "") + (e.value || ""); }
 function srcLabel(src) { return SRC_LABEL[src || ""] || src; }
 function treeChildren(P, pid) { return P.tree.nodes.filter((n) => (n.parent || null) === (pid || null)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
@@ -63,6 +63,8 @@ function digest(P, opt) {
   if (wn.length) L.push("[원하는 것] " + WANT_TYPES.map((t) => { const xs = wn.filter((w) => w.type === t.id).sort((a, b) => (b.prio || 0) - (a.prio || 0)); return xs.length ? t.en + ": " + xs.slice(0, 7).map((w) => w.text + "(" + (HZ_BY[w.horizon]?.[1] || "?") + ",★" + (w.prio || 1) + "," + (WS_BY[w.status] || "") + ")").join(", ") : null; }).filter(Boolean).join(" | "));
   const ev = P.timeline.events.filter((x) => x.s).sort((a, b) => ym2num(a.s) - ym2num(b.s));
   if (ev.length) L.push("[연대기] " + ev.map((x) => fmtYM(x.s) + (x.e ? "~" + fmtYM(x.e) : "") + " " + x.label + (x.est ? "(추정)" : "")).join(", "));
+  const dc = P.decisions.items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 6);
+  if (dc.length) L.push("[결정 일지] " + dc.map((d) => d.title + "(" + fmtYM(d.date) + ", 확신 " + (d.conf || "?") + "%" + (d.status === "done" ? ", 결과 " + ((DEC_MET.find((x) => x[0] === d.met) || [0, "?"])[1]) + (d.lesson ? ", 배운 점: " + cut(d.lesson, 60) : "") : ", 진행 중") + ")").join(" / "));
   const led = ledgerLines(P, opt.cats, opt.facts ? Math.ceil(opt.facts / 3) : 20);
   if (led) L.push("[Records: 직접 기록하거나 대화에서 알게 된 사실]\n" + led);
   if (opt.log) {

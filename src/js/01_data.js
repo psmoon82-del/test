@@ -245,14 +245,14 @@ const CONF = [["sure", "확실"], ["est", "추정"]];
 
 /* purpose packs: what a helper (person or AI) needs for one kind of task */
 const PACKS = [
-  { id: "all", name: "전체 프로필", d: "모든 기록. 처음 만나는 AI에게 나를 소개할 때", cats: CAT_IDS, parts: ["basics", "mind", "taste", "thoughts", "goals", "history", "log"] },
-  { id: "career", name: "이력서·커리어", d: "이력서, 자기소개서, 이직, 커리어 설계", cats: ["basic", "work", "mind", "goals", "history"], parts: ["basics", "mind", "goals", "history"] },
+  { id: "all", name: "전체 프로필", d: "모든 기록. 처음 만나는 AI에게 나를 소개할 때", cats: CAT_IDS, parts: ["basics", "mind", "taste", "thoughts", "goals", "history", "log", "decisions"] },
+  { id: "career", name: "이력서·커리어", d: "이력서, 자기소개서, 이직, 커리어 설계", cats: ["basic", "work", "mind", "goals", "history"], parts: ["basics", "mind", "goals", "history", "decisions"] },
   { id: "health", name: "건강·의료", d: "진료 준비, 건강 상담, 운동·식단 설계", cats: ["basic", "health", "routine", "family"], parts: ["basics"] },
   { id: "money", name: "재정·보험", d: "금융 상담, 보험 점검, 지출 관리", cats: ["basic", "family", "money", "home", "health", "goals"], parts: ["basics", "goals"] },
   { id: "home", name: "이사·주거", d: "집 구하기, 동네 고르기, 생활 환경", cats: ["basic", "family", "home", "work", "routine", "money"], parts: ["basics", "taste"] },
   { id: "taste", name: "추천받기", d: "쇼핑, 콘텐츠, 음악, 영화, 맛집", cats: ["basic", "taste", "routine"], parts: ["basics", "taste"] },
-  { id: "plan", name: "계획·일정", d: "할 일 설계, 일정 잡기, 목표 관리", cats: ["basic", "work", "routine", "goals", "thoughts"], parts: ["basics", "mind", "goals", "thoughts"] },
-  { id: "counsel", name: "마음 상담", d: "고민 상담, 심리 상담 준비", cats: ["basic", "mind", "thoughts", "family", "health", "history"], parts: ["basics", "mind", "thoughts", "history", "log"] },
+  { id: "plan", name: "계획·일정", d: "할 일 설계, 일정 잡기, 목표 관리", cats: ["basic", "work", "routine", "goals", "thoughts"], parts: ["basics", "mind", "goals", "thoughts", "decisions"] },
+  { id: "counsel", name: "마음 상담", d: "고민 상담, 심리 상담 준비", cats: ["basic", "mind", "thoughts", "family", "health", "history"], parts: ["basics", "mind", "thoughts", "history", "log", "decisions"] },
   { id: "study", name: "공부·자기계발", d: "영어 공부, 새 기술 배우기", cats: ["basic", "work", "routine", "goals", "mind", "taste"], parts: ["basics", "mind", "goals"] },
 ];
 const PACK_BY = Object.fromEntries(PACKS.map((p) => [p.id, p]));
