@@ -12,6 +12,7 @@ const S = {
     busy: {},
   },
   saveState: "idle",
+  diag: { caps: null, perms: null, save: null, ai: null },
 };
 
 function blankProfile() {
@@ -171,11 +172,11 @@ function flush() {
       try { await S.db.doc(docPath(n)).set(clone(DOCS[n]())); }
       catch (e) {
         if (e && e.code === "unavailable") { try { await new Promise((r) => setTimeout(r, 800 + Math.random() * 600)); await S.db.doc(docPath(n)).set(clone(DOCS[n]())); continue; } catch (e2) { e = e2; } }
-        setSave("err"); toast("저장하지 못했어요 (" + ((e && e.code) || "오류") + "). 잠시 후 다시 시도해 주세요.");
+        noteErr("save", e); setSave("err"); toast("저장하지 못했어요 (" + ((e && e.code) || "오류") + "). 잠시 후 다시 시도해 주세요.");
         dirty.add(n); return;
       }
     }
-    setSave("idle");
+    S.diag.save = null; setSave("idle"); renderDiag();
   });
 }
 window.addEventListener("beforeunload", () => { if (dirty.size) flush(); });
@@ -191,6 +192,16 @@ async function withTimeout(p, ms, fallback) {
   let t; const timer = new Promise((r) => { t = setTimeout(() => r(fallback), ms); });
   const v = await Promise.race([p, timer]); clearTimeout(t); return v;
 }
+/* diagnostics: what the viewer actually served, and the last failure codes */
+function noteErr(kind, e) {
+  S.diag[kind] = { code: (e && e.code) || "unknown", msg: String((e && e.message) || (e && e.code ? "" : e) || "").slice(0, 200), at: new Date().toLocaleTimeString() };
+  console.error("[lifedock] " + kind + " failed", e);
+  renderDiag();
+}
+async function readPerms() {
+  try { const pm = await window.claude.use("permissions"); S.diag.perms = pm ? await pm.state() : null; } catch (e) { S.diag.perms = null; }
+  renderDiag();
+}
 async function boot() {
   const c = window.claude;
   if (!c || typeof c.use !== "function") {
@@ -203,6 +214,8 @@ async function boot() {
     withTimeout(c.use("sample").catch(() => null), 12000, null),
   ]);
   S.db = db; S.user = user; S.sample = sample;
+  S.diag.caps = { db: !!db, user: !!user, sample: !!sample };
+  readPerms();
   if (user) {
     try { S.uid = await user.id(); } catch (e) { S.uid = null; }
     try { S.isOwner = await user.isOwner(); } catch (e) { S.isOwner = false; }
@@ -233,6 +246,6 @@ async function boot() {
     }
   } catch (e) {
     S.mode = "noid"; S.P = ensureShape(blankProfile());
-    S.bootErr = (e && e.code) || "load";
+    S.bootErr = (e && e.code) || "load"; noteErr("boot", e);
   }
 }

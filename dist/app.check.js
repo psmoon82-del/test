@@ -290,6 +290,7 @@ const S = {
     busy: {},
   },
   saveState: "idle",
+  diag: { caps: null, perms: null, save: null, ai: null },
 };
 
 function blankProfile() {
@@ -449,11 +450,11 @@ function flush() {
       try { await S.db.doc(docPath(n)).set(clone(DOCS[n]())); }
       catch (e) {
         if (e && e.code === "unavailable") { try { await new Promise((r) => setTimeout(r, 800 + Math.random() * 600)); await S.db.doc(docPath(n)).set(clone(DOCS[n]())); continue; } catch (e2) { e = e2; } }
-        setSave("err"); toast("저장하지 못했어요 (" + ((e && e.code) || "오류") + "). 잠시 후 다시 시도해 주세요.");
+        noteErr("save", e); setSave("err"); toast("저장하지 못했어요 (" + ((e && e.code) || "오류") + "). 잠시 후 다시 시도해 주세요.");
         dirty.add(n); return;
       }
     }
-    setSave("idle");
+    S.diag.save = null; setSave("idle"); renderDiag();
   });
 }
 window.addEventListener("beforeunload", () => { if (dirty.size) flush(); });
@@ -469,6 +470,16 @@ async function withTimeout(p, ms, fallback) {
   let t; const timer = new Promise((r) => { t = setTimeout(() => r(fallback), ms); });
   const v = await Promise.race([p, timer]); clearTimeout(t); return v;
 }
+/* diagnostics: what the viewer actually served, and the last failure codes */
+function noteErr(kind, e) {
+  S.diag[kind] = { code: (e && e.code) || "unknown", msg: String((e && e.message) || (e && e.code ? "" : e) || "").slice(0, 200), at: new Date().toLocaleTimeString() };
+  console.error("[lifedock] " + kind + " failed", e);
+  renderDiag();
+}
+async function readPerms() {
+  try { const pm = await window.claude.use("permissions"); S.diag.perms = pm ? await pm.state() : null; } catch (e) { S.diag.perms = null; }
+  renderDiag();
+}
 async function boot() {
   const c = window.claude;
   if (!c || typeof c.use !== "function") {
@@ -481,6 +492,8 @@ async function boot() {
     withTimeout(c.use("sample").catch(() => null), 12000, null),
   ]);
   S.db = db; S.user = user; S.sample = sample;
+  S.diag.caps = { db: !!db, user: !!user, sample: !!sample };
+  readPerms();
   if (user) {
     try { S.uid = await user.id(); } catch (e) { S.uid = null; }
     try { S.isOwner = await user.isOwner(); } catch (e) { S.isOwner = false; }
@@ -511,7 +524,7 @@ async function boot() {
     }
   } catch (e) {
     S.mode = "noid"; S.P = ensureShape(blankProfile());
-    S.bootErr = (e && e.code) || "load";
+    S.bootErr = (e && e.code) || "load"; noteErr("boot", e);
   }
 }
 
@@ -558,6 +571,9 @@ function digest(P, opt) {
 
 function aiErrMsg(e) {
   const c = e && e.code;
+  return aiErrCopy(c) + (c && c !== "cancelled" ? " [" + c + "]" : "");
+}
+function aiErrCopy(c) {
   return ({
     not_granted: "이 페이지에서 Claude를 쓰도록 허용되지 않았어요.",
     sampling_disabled: "이 계정에서는 Claude 연결을 쓸 수 없어요.",
@@ -578,7 +594,7 @@ function aiAvailable() { return !!S.sample && !S.aiOff; }
 async function aiJSON(prompt, opts) {
   if (!aiAvailable()) throw { code: "capability_disabled" };
   try { return await S.sample.json(prompt, Object.assign({ modelTier: "default" }, opts || {})); }
-  catch (e) { if (e && PERMANENT.has(e.code)) S.aiOff = e.code; throw e; }
+  catch (e) { if (!(e && e.code === "cancelled")) noteErr("ai", e); if (e && PERMANENT.has(e.code)) S.aiOff = e.code; throw e; }
 }
 
 const STYLE_RULES = "한국어로 쓰세요. 담백하고 구체적으로. 칭찬·과장·상담사 말투 금지. 사용자의 응답·메모에 있는 근거만 사용하고 추측으로 사실을 만들지 마세요. 진단하거나 단정하지 말고 '~로 보인다', '~일 수 있다' 수준으로.";
@@ -872,7 +888,8 @@ function viewHome() {
         (recent.length ? recent.map((r) => '<li><span class="ltype" style="min-width:52px"><i class="dot" style="background:' + (RT_BY[r.type]?.color || "var(--ink-3)") + '"></i>' + esc(RT_BY[r.type]?.name || "") + '</span><span style="flex:1">' + esc(cut(r.text, 90)) + '</span><span class="mono muted" style="font-size:11px">' + esc(fmtYM(r.date)) + "</span></li>").join("") : '<li class="muted">아직 기록이 없어요.</li>') +
       '</ul></section><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="font-size:15px">최근에 알게 된 것</h3><a href="#interview" data-act="go" data-view="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
         (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:64px;justify-content:center">' + esc(AREAS[f.area] || f.area) + '</span><span style="flex:1">' + esc(f.text) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') +
-      "</ul></section></div>";
+      "</ul></section></div>" +
+    '<details class="diag diag-home"><summary>연결 상태</summary><div class="diag-body">' + diagHTML() + "</div></details>";
 }
 function kpi(l, v, d) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(d) + "</div></div>"; }
 function dwgCard(view, no, name, meta, preview) {
@@ -1732,12 +1749,22 @@ function buildShell() {
     '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">LIFE DOCK</div><div class="brand-sub">나를 짓고 고쳐 쓰는 곳</div></div></div><dl class="hull"><dt>HULL</dt><dd id="rHull"></dd><dt>OWNER</dt><dd id="rOwner"></dd><dt>REV</dt><dd id="rRev"></dd></dl></div>' +
     '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "현황판", "00") + nav("journey", I.route, "여정", "CH") + nav("interview", I.chat, "시운전 인터뷰", "AI") + nav("log", I.log, "정비 일지", "LOG") +
     '<div class="nav-label">DRAWINGS · 도면</div>' + nav("portrait", I.person, "자기 초상", "LD-01") + nav("map", I.map, "살아있는 지도", "LD-02") + nav("gantt", I.gantt, "인생 공정표", "LD-03") + nav("metrics", I.chart, "지표", "LD-04") + "</nav>" +
-    '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div></div></aside>' +
+    '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div><details class="diag"><summary>연결 상태</summary><div class="diag-body"></div></details></div></aside>' +
     '<div class="main"><header class="topbar-m"><div class="brand-mark">' + I.logo + '<span class="brand-name">LIFE DOCK</span></div><div class="row" style="gap:10px"><span class="mono muted" id="mRev" style="font-size:11px"></span><span class="save-state"><i></i><span>저장됨</span></span></div></header><main class="page" id="page"></main></div>' +
     '<nav class="tabbar" aria-label="하단 메뉴">' + [["home", I.home, "현황"], ["journey", I.route, "여정"], ["interview", I.chat, "인터뷰"], ["log", I.log, "기록"], ["portrait", I.dwg, "도면"]].map(([v, ic, l]) => '<a href="#' + v + '" data-go="' + v + '" data-tab="' + v + '">' + ic + l + "</a>").join("") + "</nav></div>";
   setSave(S.mode === "cloud" ? "idle" : "off");
 }
 let lastView = null;
+function diagHTML() {
+  const d = S.diag, c = d.caps;
+  const yn = (v) => (v ? "연결됨" : "없음");
+  const row = (k, v) => "<div><b>" + esc(k) + "</b> " + esc(v) + "</div>";
+  const err = (e) => (e ? e.code + (e.msg ? " — " + e.msg : "") + " (" + e.at + ")" : "없음");
+  const perms = d.perms ? Object.keys(d.perms).map((k) => k + ":" + d.perms[k]).join(", ") : "알 수 없음";
+  return row("모드", S.mode) + (c ? row("저장소", yn(c.db)) + row("사용자", yn(c.user) + (S.uid ? " · id 있음" : " · id 없음") + (S.isOwner ? " · 소유자" : "")) + row("Claude", yn(c.sample) + (S.aiOff ? " · 꺼짐(" + S.aiOff + ")" : "")) : row("런타임", "없음")) +
+    row("권한", perms) + row("마지막 저장 오류", err(d.save)) + row("마지막 AI 오류", err(d.ai)) + (d.boot ? row("불러오기 오류", err(d.boot)) : "");
+}
+function renderDiag() { const h = diagHTML(); $$(".diag-body").forEach((el) => { el.innerHTML = h; }); }
 function render() {
   const v = S.ui.view;
   $$(".nav a[data-go]").forEach((a) => a.classList.toggle("on", a.dataset.go === v));
@@ -1750,6 +1777,7 @@ function render() {
   page.innerHTML = ROUTES[v]();
   if (lastView !== v) { window.scrollTo(0, 0); lastView = v; } else window.scrollTo(0, y);
   if (AFTER[v]) AFTER[v]();
+  renderDiag();
 }
 function goView(v) {
   if (!ROUTES[v]) v = "home";

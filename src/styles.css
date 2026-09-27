@@ -84,6 +84,11 @@ p{margin:0}
 .save-state.saving i{background:var(--warn)}
 .save-state.off i{background:var(--ink-4)}
 .save-state.err i{background:var(--crit)}
+.diag{font-size:11px;color:var(--ink-3)}
+.diag summary{cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em}
+.diag-body{display:flex;flex-direction:column;gap:3px;margin-top:6px;word-break:break-all;line-height:1.45}
+.diag-body b{font-weight:600;color:var(--ink-2)}
+.diag-home{margin-top:22px}
 
 .main{min-width:0;background-image:linear-gradient(var(--gridline) 1px,transparent 1px),linear-gradient(90deg,var(--gridline) 1px,transparent 1px);background-size:24px 24px;background-position:-1px -1px}
 .page{max-width:1240px;margin:0 auto;padding-inline:28px;padding-block:26px 90px}

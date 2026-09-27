@@ -9,12 +9,22 @@ function buildShell() {
     '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">LIFE DOCK</div><div class="brand-sub">나를 짓고 고쳐 쓰는 곳</div></div></div><dl class="hull"><dt>HULL</dt><dd id="rHull"></dd><dt>OWNER</dt><dd id="rOwner"></dd><dt>REV</dt><dd id="rRev"></dd></dl></div>' +
     '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "현황판", "00") + nav("journey", I.route, "여정", "CH") + nav("interview", I.chat, "시운전 인터뷰", "AI") + nav("log", I.log, "정비 일지", "LOG") +
     '<div class="nav-label">DRAWINGS · 도면</div>' + nav("portrait", I.person, "자기 초상", "LD-01") + nav("map", I.map, "살아있는 지도", "LD-02") + nav("gantt", I.gantt, "인생 공정표", "LD-03") + nav("metrics", I.chart, "지표", "LD-04") + "</nav>" +
-    '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div></div></aside>' +
+    '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div><details class="diag"><summary>연결 상태</summary><div class="diag-body"></div></details></div></aside>' +
     '<div class="main"><header class="topbar-m"><div class="brand-mark">' + I.logo + '<span class="brand-name">LIFE DOCK</span></div><div class="row" style="gap:10px"><span class="mono muted" id="mRev" style="font-size:11px"></span><span class="save-state"><i></i><span>저장됨</span></span></div></header><main class="page" id="page"></main></div>' +
     '<nav class="tabbar" aria-label="하단 메뉴">' + [["home", I.home, "현황"], ["journey", I.route, "여정"], ["interview", I.chat, "인터뷰"], ["log", I.log, "기록"], ["portrait", I.dwg, "도면"]].map(([v, ic, l]) => '<a href="#' + v + '" data-go="' + v + '" data-tab="' + v + '">' + ic + l + "</a>").join("") + "</nav></div>";
   setSave(S.mode === "cloud" ? "idle" : "off");
 }
 let lastView = null;
+function diagHTML() {
+  const d = S.diag, c = d.caps;
+  const yn = (v) => (v ? "연결됨" : "없음");
+  const row = (k, v) => "<div><b>" + esc(k) + "</b> " + esc(v) + "</div>";
+  const err = (e) => (e ? e.code + (e.msg ? " — " + e.msg : "") + " (" + e.at + ")" : "없음");
+  const perms = d.perms ? Object.keys(d.perms).map((k) => k + ":" + d.perms[k]).join(", ") : "알 수 없음";
+  return row("모드", S.mode) + (c ? row("저장소", yn(c.db)) + row("사용자", yn(c.user) + (S.uid ? " · id 있음" : " · id 없음") + (S.isOwner ? " · 소유자" : "")) + row("Claude", yn(c.sample) + (S.aiOff ? " · 꺼짐(" + S.aiOff + ")" : "")) : row("런타임", "없음")) +
+    row("권한", perms) + row("마지막 저장 오류", err(d.save)) + row("마지막 AI 오류", err(d.ai)) + (d.boot ? row("불러오기 오류", err(d.boot)) : "");
+}
+function renderDiag() { const h = diagHTML(); $$(".diag-body").forEach((el) => { el.innerHTML = h; }); }
 function render() {
   const v = S.ui.view;
   $$(".nav a[data-go]").forEach((a) => a.classList.toggle("on", a.dataset.go === v));
@@ -27,6 +37,7 @@ function render() {
   page.innerHTML = ROUTES[v]();
   if (lastView !== v) { window.scrollTo(0, 0); lastView = v; } else window.scrollTo(0, y);
   if (AFTER[v]) AFTER[v]();
+  renderDiag();
 }
 function goView(v) {
   if (!ROUTES[v]) v = "home";

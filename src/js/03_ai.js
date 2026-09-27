@@ -41,6 +41,9 @@ function digest(P, opt) {
 
 function aiErrMsg(e) {
   const c = e && e.code;
+  return aiErrCopy(c) + (c && c !== "cancelled" ? " [" + c + "]" : "");
+}
+function aiErrCopy(c) {
   return ({
     not_granted: "이 페이지에서 Claude를 쓰도록 허용되지 않았어요.",
     sampling_disabled: "이 계정에서는 Claude 연결을 쓸 수 없어요.",
@@ -61,7 +64,7 @@ function aiAvailable() { return !!S.sample && !S.aiOff; }
 async function aiJSON(prompt, opts) {
   if (!aiAvailable()) throw { code: "capability_disabled" };
   try { return await S.sample.json(prompt, Object.assign({ modelTier: "default" }, opts || {})); }
-  catch (e) { if (e && PERMANENT.has(e.code)) S.aiOff = e.code; throw e; }
+  catch (e) { if (!(e && e.code === "cancelled")) noteErr("ai", e); if (e && PERMANENT.has(e.code)) S.aiOff = e.code; throw e; }
 }
 
 const STYLE_RULES = "한국어로 쓰세요. 담백하고 구체적으로. 칭찬·과장·상담사 말투 금지. 사용자의 응답·메모에 있는 근거만 사용하고 추측으로 사실을 만들지 마세요. 진단하거나 단정하지 말고 '~로 보인다', '~일 수 있다' 수준으로.";

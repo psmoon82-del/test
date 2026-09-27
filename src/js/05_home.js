@@ -66,7 +66,8 @@ function viewHome() {
         (recent.length ? recent.map((r) => '<li><span class="ltype" style="min-width:52px"><i class="dot" style="background:' + (RT_BY[r.type]?.color || "var(--ink-3)") + '"></i>' + esc(RT_BY[r.type]?.name || "") + '</span><span style="flex:1">' + esc(cut(r.text, 90)) + '</span><span class="mono muted" style="font-size:11px">' + esc(fmtYM(r.date)) + "</span></li>").join("") : '<li class="muted">아직 기록이 없어요.</li>') +
       '</ul></section><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="font-size:15px">최근에 알게 된 것</h3><a href="#interview" data-act="go" data-view="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
         (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:64px;justify-content:center">' + esc(AREAS[f.area] || f.area) + '</span><span style="flex:1">' + esc(f.text) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') +
-      "</ul></section></div>";
+      "</ul></section></div>" +
+    '<details class="diag diag-home"><summary>연결 상태</summary><div class="diag-body">' + diagHTML() + "</div></details>";
 }
 function kpi(l, v, d) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(d) + "</div></div>"; }
 function dwgCard(view, no, name, meta, preview) {
