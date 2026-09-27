@@ -1104,8 +1104,8 @@ function viewHome() {
     "</div></section>" +
     nudgeCard() +
     '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">원장</h2><a href="#ledger" data-go="ledger" style="font-size:12.5px">전체 보기</a></div>' +
-    '<div class="cat-grid">' + LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => { const n = catCount(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
-      return '<button class="cat-card' + (n ? "" : " empty") + '" data-act="ledOpen" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span class="d">' + esc(c.d) + '</span><span class="n mono">' + (n ? n + "개" : "비어 있음") + (st ? ' · <i class="stale-dot"></i>확인 ' + st : "") + "</span></button>"; }).join("") + "</div>" +
+    '<div class="cat-grid">' + LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => { const t = countText(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
+      return '<button class="cat-card' + (t ? "" : " empty") + '" data-act="ledOpen" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span class="d">' + esc(c.d) + '</span><span class="n">' + (t ? esc(t) : "비어 있음") + (st ? ' · <i class="stale-dot"></i>확인 ' + st : "") + "</span></button>"; }).join("") + "</div>" +
     '<div class="grid2" style="margin-top:28px"><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>탐구</h3><span class="muted" style="font-size:12px">고르기 위주의 9개 장</span></div><div class="chrows">' + chRows + "</div></section>" +
     '<section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>최근에 알게 된 것</h3><a href="#interview" data-go="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
       (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:72px;justify-content:center">' + esc(CAT_BY[f.cat].name) + '</span><span style="flex:1">' + esc(entryText(f)) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') + "</ul></section></div>" +
@@ -1627,10 +1627,21 @@ function addEntry(f) {
   return e;
 }
 function isStale(e) { const t = Date.parse(e.up || e.at); return !isNaN(t) && Date.now() - t > STALE_DAYS * 86400000; }
-function catCount(P, c) {
-  const n = P.ledger.filter((e) => e.cat === c).length;
-  const extra = c === "taste" ? allLoveItems(P).length : c === "thoughts" ? P.tree.nodes.filter((x) => x.kind !== "word").length : c === "goals" ? P.wants.items.length : c === "history" ? P.timeline.events.length : 0;
-  return n + extra;
+/* a category holds its own ledger entries plus, for four categories, a linked structured section */
+const LINKED = { basic: "기본 항목", taste: "좋아하는 것", thoughts: "생각 나무", goals: "원하는 것", history: "이정표" };
+function catCounts(P, c) {
+  const own = P.ledger.filter((e) => e.cat === c).length;
+  const linked = c === "basic" ? ["name", "birthYear", "region", "family", "job", "career", "intro"].filter((k) => P.basics[k]).length : c === "taste" ? allLoveItems(P).length : c === "thoughts" ? P.tree.nodes.filter((x) => x.kind !== "word").length : c === "goals" ? P.wants.items.length : c === "history" ? P.timeline.events.length : 0;
+  return { own, linked, label: LINKED[c] || "" };
+}
+function catCount(P, c) { const k = catCounts(P, c); return k.own + k.linked; }
+/* "16 · 생각 나무 35" — says what each number counts */
+function countText(P, c, short) {
+  const k = catCounts(P, c);
+  if (!k.own && !k.linked) return "";
+  const own = k.own ? (short ? k.own : "기록 " + k.own) : "";
+  const lk = k.linked ? k.label + " " + k.linked : "";
+  return [own, lk].filter(Boolean).join(" · ");
 }
 /* structured sections that also belong to a ledger category */
 function catLinked(P, c) {
@@ -1651,15 +1662,16 @@ function viewLedger() {
   const P = S.P, cur = S.ui.ledCat;
   const staleAll = P.ledger.filter(isStale).length;
   const idx = '<nav class="led-index" aria-label="원장 분류"><button class="led-cat ' + (!cur ? "on" : "") + '" data-act="ledCat" data-id=""><span>전체</span><span class="n">' + P.ledger.length + "</span></button>" +
-    LEDGER_CATS.map((c) => { const n = catCount(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
-      return '<button class="led-cat ' + (cur === c.id ? "on" : "") + (n ? "" : " empty") + '" data-act="ledCat" data-id="' + c.id + '"><span>' + c.name + '</span><span class="n">' + (st ? '<i class="stale-dot" title="확인 필요 ' + st + '"></i>' : "") + n + "</span></button>"; }).join("") + "</nav>";
+    LEDGER_CATS.map((c) => { const k = catCounts(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
+      return '<button class="led-cat ' + (cur === c.id ? "on" : "") + (k.own || k.linked ? "" : " empty") + '" data-act="ledCat" data-id="' + c.id + '"' + (k.linked ? ' title="원장 기록 ' + k.own + "개, " + k.label + " " + k.linked + '개"' : "") + '><span>' + c.name + '</span><span class="n">' + (st ? '<i class="stale-dot" title="확인 필요 ' + st + '"></i>' : "") + k.own + (k.linked ? '<small class="lk">+' + k.linked + "</small>" : "") + "</span></button>"; }).join("") +
+    '<p class="led-note">+ 숫자는 연결된 목록(기본 항목, 좋아하는 것, 생각 나무, 원하는 것, 이정표)의 개수예요. 분류를 누르면 위쪽에서 바로 열 수 있어요.</p></nav>';
   const cats = cur ? [CAT_BY[cur]] : LEDGER_CATS.filter((c) => P.ledger.some((e) => e.cat === c.id));
   let body = "";
   cats.forEach((c) => {
     const rows = P.ledger.map((e, i) => ({ e, i })).filter((o) => o.e.cat === c.id);
     const subs = Array.from(new Set(rows.map((o) => o.e.sub || "")));
     subs.sort((a, b) => (c.subs.indexOf(a) + 99 * !a) - (c.subs.indexOf(b) + 99 * !b));
-    body += '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + esc(c.d) + "</span></header>" +
+    body += '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + esc(countText(P, c.id) || c.d) + "</span></header>" +
       (cur ? catLinked(P, c.id) : "") +
       (rows.length ? subs.map((sb) => '<div class="led-group">' + (sb ? '<div class="led-sub">' + esc(sb) + "</div>" : "") + rows.filter((o) => (o.e.sub || "") === sb).sort((a, b) => String(b.e.up).localeCompare(String(a.e.up))).map(entryRow).join("") + "</div>").join("")
         : cur ? '<p class="empty">아직 기록이 없어요. 아래에서 추가해 보세요.</p>' : "") +
@@ -1694,7 +1706,7 @@ function entryRow({ e, i }) {
 function entryAdder(c) {
   return '<div class="entry-add"><div class="entry-form">' +
     '<input class="input" id="newEntSub" list="subs_add_' + c.id + '" placeholder="세부 분류 (선택)" aria-label="세부 분류"><datalist id="subs_add_' + c.id + '">' + c.subs.map((x) => '<option value="' + esc(x) + '">').join("") + "</datalist>" +
-    '<input class="input" id="newEntLabel" placeholder="항목 (예: ' + esc(({ health: "혈압", money: "월 소득", work: "현재 직무", family: "배우자 생일", home: "거주 형태", routine: "기상 시간", basic: "최종 학력" })[c.id] || "항목") + ')" aria-label="항목">' +
+    '<input class="input" id="newEntLabel" placeholder="항목 (예: ' + esc(({ health: "혈압", money: "월 소득", work: "현재 직무", family: "배우자 생일", home: "거주 형태", routine: "기상 시간", basic: "최종 학력", mind: "강점", taste: "요즘 즐겨 듣는 음악", thoughts: "요즘 고민", goals: "올해 목표", history: "첫 직장" })[c.id] || "선택") + ')" aria-label="항목">' +
     '<input class="input mono" id="newEntDate" placeholder="날짜 YYYY-MM (선택)" aria-label="날짜">' +
     '<textarea class="input" id="newEntValue" rows="2" placeholder="내용" aria-label="내용"></textarea>' +
     '<div class="row" style="gap:6px"><label class="check"><input type="checkbox" id="newEntEst"> 추정</label><span style="flex:1"></span><button class="btn primary" data-act="entryAdd" data-cat="' + c.id + '">' + I.plus + "기록하기</button></div></div></div>";

@@ -62,8 +62,8 @@ function viewHome() {
     "</div></section>" +
     nudgeCard() +
     '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">원장</h2><a href="#ledger" data-go="ledger" style="font-size:12.5px">전체 보기</a></div>' +
-    '<div class="cat-grid">' + LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => { const n = catCount(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
-      return '<button class="cat-card' + (n ? "" : " empty") + '" data-act="ledOpen" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span class="d">' + esc(c.d) + '</span><span class="n mono">' + (n ? n + "개" : "비어 있음") + (st ? ' · <i class="stale-dot"></i>확인 ' + st : "") + "</span></button>"; }).join("") + "</div>" +
+    '<div class="cat-grid">' + LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => { const t = countText(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
+      return '<button class="cat-card' + (t ? "" : " empty") + '" data-act="ledOpen" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span class="d">' + esc(c.d) + '</span><span class="n">' + (t ? esc(t) : "비어 있음") + (st ? ' · <i class="stale-dot"></i>확인 ' + st : "") + "</span></button>"; }).join("") + "</div>" +
     '<div class="grid2" style="margin-top:28px"><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>탐구</h3><span class="muted" style="font-size:12px">고르기 위주의 9개 장</span></div><div class="chrows">' + chRows + "</div></section>" +
     '<section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>최근에 알게 된 것</h3><a href="#interview" data-go="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
       (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:72px;justify-content:center">' + esc(CAT_BY[f.cat].name) + '</span><span style="flex:1">' + esc(entryText(f)) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') + "</ul></section></div>" +
