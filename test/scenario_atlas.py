@@ -12,6 +12,7 @@ p, errs = mkpage(b, 1280, 900, extra="window.__NO_SEED__=true;window.__PRE__=" +
 p.wait_for_timeout(1600)
 keys = p.evaluate("Array.from(window.__store.keys()).filter(k=>k.includes('/a_')).sort()")
 print("docs:", keys)
+print("tree std:", p.evaluate("JSON.stringify(window.__store.get('" + UID + "a_tree').tree.nodes.filter(n=>!n.parent).length)"), p.evaluate("JSON.stringify(window.__store.get('" + UID + "a_core').meta.treeMove.moves)"))
 print("legacy kept:", p.evaluate("window.__store.has('" + UID + "profile')"))
 shot(p, "a01_home_migrated")
 p.click("[data-act=go][data-view=review]"); p.wait_for_timeout(300); shot(p, "a02_review")

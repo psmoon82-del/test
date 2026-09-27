@@ -158,7 +158,7 @@ const ACT = {
   treeView: (a) => { S.ui.treeView = a.dataset.v; S.ui.mindScroll = null; render(); },
   treeSel: (a) => { const m = $(".tree-mind"); if (m) S.ui.mindScroll = [m.scrollLeft, m.scrollTop]; S.ui.treeSel = a.dataset.id || null; S.ui.confirmDel = null; render(); },
   treeAdd: () => { const el = $("#newNode"); const v = el && el.value.trim(); if (!v) { el && el.focus(); return; } const n = treeAdd(S.ui.treeSel, v); if (!S.ui.treeSel) S.ui.treeSel = n.id; needDirty(); render(); const ne = $("#newNode"); if (ne) ne.focus(); },
-  treeStarter: (a) => { const n = treeAdd(null, a.dataset.v); S.ui.treeSel = n.id; needDirty(); render(); },
+  treeStd: () => { S.P.meta.treeStd = 0; ensureTreeAreas(S.P); needDirty(); render(); },
   treeUp: () => treeMove(-1),
   treeDown: () => treeMove(1),
   treeIn: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const sibs = treeChildren(S.P, n.parent); const k = sibs.indexOf(n); if (k < 1) { toast("바로 위에 같은 층 주제가 있어야 들여쓸 수 있어요."); return; } const np = sibs[k - 1]; n.parent = np.id; n.order = treeChildren(S.P, np.id).length; treeNorm(sibs[0].parent); needDirty(); render(); },
@@ -187,7 +187,7 @@ const ACT = {
     S.LOG.items.forEach((r) => { if (r.extracted) r.extracted = r.extracted.filter((x) => x !== id); });
     S.ui.confirmDel = null; S.ui.ledEdit = null; markDirty(); render(); if (f) toast("지웠어요: " + cut(entryText(f), 30));
   },
-  reviewDone: () => { S.P.meta.migration.reviewed = true; S.P.ledger.forEach((e) => delete e.mig); needDirty(); goView("home"); toast("확인을 마쳤어요."); },
+  reviewDone: () => { if (S.P.meta.migration) S.P.meta.migration.reviewed = true; if (S.P.meta.treeMove) S.P.meta.treeMove.reviewed = true; S.P.ledger.forEach((e) => delete e.mig); needDirty(); goView("home"); toast("확인을 마쳤어요."); },
   /* weekly questions (written by the scheduled check-in) */
   nudgeAnswer: (a) => {
     const i = +a.dataset.i, q = S.NUDGE.questions[i], el = $("#nq_" + i), v = el && el.value.trim(); if (!q || !v) { el && el.focus(); return; }

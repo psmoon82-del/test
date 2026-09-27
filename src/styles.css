@@ -672,3 +672,4 @@ h3{font-size:15px}
 .led-note{font-size:11px;color:var(--ink-4);line-height:1.5;padding:10px 10px 0}
 @media (max-width:900px){.led-note{display:none}}
 .led-sec > .btn,.led-sec > .kv + .btn{align-self:flex-start}
+.tn-hint{font-family:var(--f-sans);font-size:11.5px;font-weight:400;color:var(--ink-4)}

@@ -15,13 +15,13 @@ function treeEditor(compact) {
   const toolbar = '<div class="tree-bar"><span class="seg3" role="group" aria-label="보기">' + [["outline", "개요"], ["mind", "마인드맵"]].map(([v, l]) => '<button class="' + (S.ui.treeView === v ? "on" : "") + '" data-act="treeView" data-v="' + v + '">' + l + "</button>").join("") + "</span>" +
     '<span class="row" style="gap:6px;flex-wrap:nowrap;flex:1;min-width:0"><input class="input" id="newNode" placeholder="' + (sel ? "'" + esc(cut(sel.label, 14)) + "' 아래에 추가" : "새 가지 이름") + '" style="min-width:0"><button class="btn primary" data-act="treeAdd">' + I.plus + (sel ? "하위 추가" : "가지 추가") + "</button></span></div>";
   if (!ns.length) {
-    return toolbar + '<div class="tree-empty"><p>아직 나무가 없어요. 요즘 머릿속을 차지하는 큰 주제부터 가지로 만들어 보세요.</p><div class="row" style="gap:6px;justify-content:center">' +
-      TREE_STARTERS.map((t) => '<button class="chip" data-act="treeStarter" data-v="' + esc(t) + '">' + I.plus + esc(t) + "</button>").join("") + "</div></div>";
+    return toolbar + '<div class="tree-empty"><p>아직 나무가 없어요. 삶의 아홉 영역을 큰 가지로 깔고, 그 아래에 주제를 채워 보세요.</p><div><button class="btn primary" data-act="treeStd">표준 가지 깔기</button></div></div>';
   }
   const outline = (pid, depth) => treeChildren(P, pid).map((n) => {
     const kids = treeChildren(P, n.id), on = sel && sel.id === n.id;
+    const area = n.area && !n.parent ? TREE_AREAS.find((a) => a.id === n.area) : null;
     const st = n.status ? '<i class="tn-st ' + n.status + '" title="' + esc((TH_STATUS.find((x) => x[0] === n.status) || [0, ""])[1]) + '"></i>' : "";
-    return '<li><div class="tn' + (on ? " on" : "") + (n.kind === "word" ? " word" : "") + '" style="--d:' + depth + '"><button class="tn-l" data-act="treeSel" data-id="' + n.id + '">' + st + "<span>" + esc(n.label) + "</span>" + (n.weight ? '<span class="tn-w">' + "●".repeat(n.weight) + "</span>" : "") + (n.now ? '<span class="tn-note" title="지금의 생각이 있어요">✎</span>' : "") + "</button>" +
+    return '<li><div class="tn' + (on ? " on" : "") + (n.kind === "word" ? " word" : "") + '" style="--d:' + depth + '"><button class="tn-l" data-act="treeSel" data-id="' + n.id + '">' + st + "<span>" + esc(n.label) + "</span>" + (area && !kids.length ? '<span class="tn-hint">' + esc(area.d) + "</span>" : "") + (n.weight ? '<span class="tn-w">' + "●".repeat(n.weight) + "</span>" : "") + (n.now ? '<span class="tn-note" title="지금의 생각이 있어요">✎</span>' : "") + "</button>" +
       (on ? '<span class="tn-ops">' + [["treeUp", "위로", "↑"], ["treeDown", "아래로", "↓"], ["treeOut", "내어쓰기", "←"], ["treeIn", "들여쓰기", "→"]].map(([a, t, g]) => '<button class="btn sm ghost" data-act="' + a + '" title="' + t + '" aria-label="' + t + '">' + g + "</button>").join("") + "</span>" : "") + "</div>" +
       (kids.length ? "<ul>" + outline(n.id, depth + 1) + "</ul>" : "") + "</li>";
   }).join("");

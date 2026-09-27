@@ -73,6 +73,41 @@ function migrateV3(p3) {
   return P;
 }
 
+/* ---------------- think tree: standard top level ----------------
+   Adds the area roots once. Topics sitting under older, non-standard roots are filed under an area
+   (by keyword, else by their old group) and the emptied old roots are removed; every move is recorded
+   so the review screen can show it. Returns true when anything changed. */
+function areaFor(label, oldGroup) {
+  const t = String(label || "").toLowerCase().replace(/\s+/g, " ");
+  for (const [area, words] of AREA_KEYWORDS) if (words.some((w) => t.includes(w))) return area;
+  return GROUP_TO_AREA[oldGroup] || null;
+}
+function ensureTreeAreas(P) {
+  if (P.meta.treeStd) return false;
+  const ns = P.tree.nodes, now = nowISO();
+  const oldRoots = ns.filter((n) => !n.parent && !n.area);
+  TREE_AREAS.forEach((a, i) => { if (!ns.some((n) => n.id === "area_" + a.id)) ns.push({ id: "area_" + a.id, parent: null, area: a.id, label: a.name, memo: "", now: "", status: null, weight: null, order: i }); });
+  const moves = [];
+  oldRoots.forEach((r) => {
+    const g = String(r.id).startsWith("g_") ? r.id.slice(2) : null;
+    const kids = ns.filter((n) => n.parent === r.id);
+    if (g) {
+      /* an app-made group from v3: file its topics under areas and drop the group */
+      kids.forEach((k) => { const a = areaFor(k.label, g) || "meaning"; moves.push({ id: k.id, from: r.label, to: a }); k.parent = "area_" + a; });
+      P.tree.nodes = P.tree.nodes.filter((n) => n.id !== r.id);
+    } else {
+      /* a root the owner made: file it as a whole */
+      const a = areaFor(r.label, null);
+      if (a) { moves.push({ id: r.id, from: "(맨 위)", to: a }); r.parent = "area_" + a; }
+    }
+  });
+  TREE_AREAS.forEach((a) => treeChildrenOf(P, "area_" + a.id).forEach((n, i) => (n.order = i)));
+  P.meta.treeStd = 1;
+  if (moves.length) P.meta.treeMove = { at: now, reviewed: false, moves };
+  return true;
+}
+function treeChildrenOf(P, pid) { return P.tree.nodes.filter((n) => n.parent === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
+
 /* ---------------- scoring ---------------- */
 function ipipScores(P) {
   const out = {};
@@ -292,10 +327,10 @@ async function boot() {
   if (docs.chat) S.CHAT = Object.assign({ turns: [], topic: "auto" }, docs.chat);
   if (docs.log) S.LOG = Object.assign({ items: [] }, docs.log);
   if (docs.nudge) S.NUDGE = docs.nudge;
-  if (docs.a_core) { S.P = assemble(docs); return; }
+  if (docs.a_core) { S.P = assemble(docs); if (ensureTreeAreas(S.P)) flushSoon(); return; }
   const legacy = docs.profile;
   if (legacy && !(S.isOwner && blankishV3(legacy) && !(S.LOG.items || []).length)) {
-    S.P = migrateV3(legacy); S.migrated = true;
+    S.P = migrateV3(legacy); S.migrated = true; ensureTreeAreas(S.P);
   } else {
     let seeded = false;
     if (S.isOwner) {
@@ -303,6 +338,7 @@ async function boot() {
     }
     if (!seeded) S.P = ensureShape(blankProfile());
     S.P.createdAt = nowISO();
+    ensureTreeAreas(S.P);
     S.firstRun = true; S.seeded = seeded;
   }
   trackProgress();

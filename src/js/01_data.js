@@ -256,5 +256,21 @@ const PACKS = [
   { id: "study", name: "공부·자기계발", d: "영어 공부, 새 기술 배우기", cats: ["basic", "work", "routine", "goals", "mind", "taste"], parts: ["basics", "mind", "goals"] },
 ];
 const PACK_BY = Object.fromEntries(PACKS.map((p) => [p.id, p]));
-/* starter branches for an empty think tree */
-const TREE_STARTERS = ["돈·일·미래", "사람·가족", "배움·취미", "공간·물건", "몸·마음"];
+/* think-tree top level: the eight Wheel of Life areas (same ids as WHEEL) plus meaning/self.
+   Only this layer is standard; everything below is free-form, and a topic becomes a branch once it has children. */
+const TREE_AREAS = WHEEL.map((w) => ({ id: w.id, name: w.name, d: w.sub })).concat([{ id: "meaning", name: "의미·나 자신", d: "가치, 정체성, 사고방식" }]);
+/* keywords that file an existing topic under an area (checked in this order) */
+const AREA_KEYWORDS = [
+  ["work", ["2nd job", "세컨잡", "직장", "커리어", "이직", "업무", "job"]],
+  ["money", ["돈", "퇴직", "은퇴", "주식", "부동산", "계약", "연금", "투자", "보험", "재테크", "저축"]],
+  ["family", ["아이", "가족", "배우자", "아내", "남편", "부모", "자녀"]],
+  ["people", ["사람", "친구", "인간관계", "동료", "모임"]],
+  ["growth", ["영어", "교육", "스케줄", "공부", "배움", "독서", "자기계발", "코딩"]],
+  ["fun", ["취미", "그림", "음악", "장난감", "여행", "패션", "게임", "캠핑", "운동"]],
+  ["env", ["거주", "인테리어", "자동차", "차량", "노트북", "컴퓨터", "휴대폰", "인터넷", "집", "기기"]],
+  ["health", ["건강", "여유", "수면", "병원", "다이어트"]],
+  ["meaning", ["행복", "최적화", "분석력", "가치", "의미", "철학"]],
+  ["work", ["일"]],
+];
+/* v3 group -> area when no keyword matches */
+const GROUP_TO_AREA = { money: "money", people: "people", make: "fun", space: "env", rest: "health" };

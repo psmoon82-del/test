@@ -44,6 +44,8 @@ function viewHome() {
   if (S.mode === "local") banners += '<div class="banner" style="margin-bottom:14px"><b>이 브라우저에만 저장돼요</b><span>claude.ai 밖에서 열려 Claude 저장소에 연결되지 않았어요. 다른 기기에서는 보이지 않아요.</span></div>';
   else if (S.mode !== "cloud") banners += '<div class="banner" style="margin-bottom:14px"><b>저장되지 않아요</b><span>이 화면에서는 저장소에 연결되지 않았어요. 연결 상태를 확인해 주세요.</span></div>';
   if (P.meta.migration && !P.meta.migration.reviewed) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>새 구조로 옮겼어요.</b> 예전에 알게 된 사실 ' + P.meta.migration.facts + "개를 원장으로, 마음속 주제를 생각 나무(" + P.meta.migration.nodes + '개 가지·주제)로 옮겼어요. 분류가 맞는지 한 번 확인해 주세요.</span><button class="btn sm primary" data-act="go" data-view="review">확인하기</button></div>';
+  const tm = P.meta.treeMove;
+  if (tm && !tm.reviewed && !(P.meta.migration && !P.meta.migration.reviewed)) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>생각 나무를 표준 가지로 정리했어요.</b> 주제 ' + tm.moves.length + '개를 라이프 휠 여덟 영역과 "의미·나 자신" 아래로 옮겼어요. 주제·메모·연관어는 그대로예요.</span><button class="btn sm primary" data-act="go" data-view="review">확인하기</button></div>';
   if (S.firstRun && S.seeded && !P.dismissSeedNote) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>기존 기록으로 미리 채워 두었어요.</b> 좋아하는 것 ' + allLoveItems(P).length + "개, 생각 나무 " + P.tree.nodes.length + "개, 원하는 것 " + P.wants.items.length + "개, 기록 " + S.LOG.items.length + '건을 옮겼어요. 추정한 연도에는 <span class="tag est">추정</span> 표시가 있어요.</span><button class="btn sm ghost" data-act="dismissSeed">닫기</button></div>';
 
   const recent = S.LOG.items.slice().sort((a, c) => String(c.date).localeCompare(String(a.date)) || String(c.at).localeCompare(String(a.at))).slice(0, 4);
@@ -80,16 +82,28 @@ function viewHome() {
 }
 
 /* ---------------- migration review ---------------- */
+function treeMoveSection(P) {
+  const tm = P.meta.treeMove; if (!tm) return "";
+  const roots = P.tree.nodes.filter((n) => !n.parent);
+  const rows = tm.moves.map((mv) => ({ mv, i: P.tree.nodes.findIndex((n) => n.id === mv.id) })).filter((o) => o.i > -1);
+  const byArea = TREE_AREAS.map((a) => ({ a, xs: rows.filter((o) => P.tree.nodes[o.i].parent === "area_" + a.id) })).filter((x) => x.xs.length);
+  const other = rows.filter((o) => !String(P.tree.nodes[o.i].parent || "").startsWith("area_"));
+  const row = ({ mv, i }) => { const n = P.tree.nodes[i]; const kids = treeChildren(P, n.id).length;
+    return '<div class="rv-row"><select class="input" data-bind="P.tree.nodes.' + i + '.parent" data-rerender="1" aria-label="가지">' + roots.map((r) => '<option value="' + r.id + '"' + (r.id === n.parent ? " selected" : "") + ">" + esc(r.label) + "</option>").join("") + '</select><span class="rv-t">' + esc(n.label) + '<span class="src">예전 묶음: ' + esc(mv.from) + (kids ? " · 하위 " + kids + "개 함께 이동" : "") + "</span></span><span></span></div>"; };
+  return '<h2 class="sec-h" style="margin:26px 0 6px">생각 나무</h2><p class="muted" style="font-size:12.5px;margin-bottom:10px">예전 다섯 묶음(돈·일·미래 등)은 앱이 임의로 만든 것이라 없애고, 주제를 라이프 휠 여덟 영역과 "의미·나 자신" 아래로 옮겼어요. 가지를 바꾸면 하위 연관어도 함께 옮겨져요.</p>' +
+    byArea.map(({ a, xs }) => '<section class="led-sec"><header><h2>' + esc(a.name) + '</h2><span class="muted">' + xs.length + "개</span></header>" + xs.map(row).join("") + "</section>").join("") +
+    (other.length ? '<section class="led-sec"><header><h2>다른 가지</h2></header>' + other.map(row).join("") + "</section>" : "");
+}
 function viewReview() {
   const P = S.P, m = P.meta.migration;
   const rows = P.ledger.map((e, i) => ({ e, i })).filter((o) => o.e.mig);
   const byCat = LEDGER_CATS.map((c) => ({ c, xs: rows.filter((o) => o.e.cat === c.id) })).filter((x) => x.xs.length);
-  return '<div class="page-head"><div><div class="eyebrow">Review · 옮긴 내용 확인</div><h1>새 구조로 옮긴 내용</h1><p class="lede">예전 버전에서 "알게 된 사실"로 쌓였던 항목을 원장 분류에 나눠 넣었어요. 분류가 틀린 항목은 바꾸고, 필요 없는 항목은 지워 주세요. 예전 데이터는 따로 보관돼 있어요.</p></div></div>' +
-    '<div class="grid2" style="margin-bottom:18px"><section class="sheet pad"><div class="eyebrow">원장</div><div class="big-n">' + rows.length + '<small>항목</small></div><p class="muted" style="font-size:12.5px">' + byCat.map((x) => x.c.name + " " + x.xs.length).join(" · ") + "</p></section>" +
-    '<section class="sheet pad"><div class="eyebrow">생각 나무</div><div class="big-n">' + P.tree.nodes.length + '<small>가지·주제</small></div><p class="muted" style="font-size:12.5px">예전의 다섯 그룹은 가지로, 주제는 그 아래로, 연관어는 주제 아래 잔가지로 옮겼어요.</p><button class="btn sm" data-act="go" data-view="tree">생각 나무 보기' + I.arrow + "</button></section></div>" +
-    byCat.map(({ c, xs }) => '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + xs.length + "개</span></header>" + xs.map(({ e, i }) =>
+  return '<div class="page-head"><div><div class="eyebrow">Review · 옮긴 내용 확인</div><h1>옮긴 내용 확인</h1><p class="lede">자동으로 분류해 옮긴 항목이에요. 분류가 틀린 것은 바꾸고, 필요 없는 것은 지워 주세요. 예전 데이터는 따로 보관돼 있어요.</p></div></div>' +
+    (rows.length ? '<section class="sheet pad" style="margin-bottom:18px"><div class="eyebrow">원장</div><div class="big-n">' + rows.length + '<small>항목</small></div><p class="muted" style="font-size:12.5px">' + byCat.map((x) => x.c.name + " " + x.xs.length).join(" · ") + "</p></section>" : "") +
+    (rows.length ? '<h2 class="sec-h" style="margin:8px 0 6px">원장</h2>' : "") + byCat.map(({ c, xs }) => '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + xs.length + "개</span></header>" + xs.map(({ e, i }) =>
       '<div class="rv-row"><select class="input" data-bind="P.ledger.' + i + '.cat" data-rerender="1" aria-label="분류">' + LEDGER_CATS.map((x) => '<option value="' + x.id + '"' + (x.id === e.cat ? " selected" : "") + ">" + x.name + "</option>").join("") + '</select><span class="rv-t">' + esc(e.value) + '<span class="src">' + esc(srcLabel(e.src)) + '</span></span><button class="btn sm ghost" data-act="entryDel" data-id="' + e.id + '" aria-label="지우기">' + I.trash + "</button></div>").join("") + "</section>").join("") +
-    '<div class="row" style="justify-content:flex-end;margin-top:18px">' + (m && m.reviewed ? '<span class="muted">확인을 마쳤어요.</span>' : '<button class="btn primary" data-act="reviewDone">모두 확인했어요</button>') + "</div>";
+    treeMoveSection(P) +
+    '<div class="row" style="justify-content:flex-end;margin-top:18px">' + ((!m || m.reviewed) && (!P.meta.treeMove || P.meta.treeMove.reviewed) ? '<span class="muted">확인을 마쳤어요.</span>' : '<button class="btn primary" data-act="reviewDone">모두 확인했어요</button>') + "</div>";
 }
 function kpi(l, v, d) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(d) + "</div></div>"; }
 function dwgCard(view, no, name, meta, preview) {
