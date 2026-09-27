@@ -31,9 +31,9 @@ function viewMetrics() {
 
   return drawingHead("metrics", "숫자로 보는 나. 모든 수치는 탐구의 응답에서 바로 계산돼요. 각 카드 아래의 '표로 보기'에서 원래 값을 확인할 수 있어요.") +
     '<div class="mx">' +
-      '<section class="sheet mcard c3 stat"><div class="l">지도 완성도</div><div class="v" style="font-size:44px">' + pct + '%</div><div class="d">탐구·원장·인터뷰를 합친 진척도</div></section>' +
+      '<section class="sheet mcard c3 stat"><div class="l">완성도</div><div class="v" style="font-size:44px">' + pct + '%</div><div class="d">탐구·Records·인터뷰를 합친 진척도</div></section>' +
       '<section class="sheet mcard c3 stat"><div class="l">완료 챕터</div><div class="v">' + doneN + ' / 9</div><div class="d">진행 중 ' + CH.filter((c) => chState(P, c.id) === "doing").length + "</div></section>" +
-      '<section class="sheet mcard c3 stat"><div class="l">원장 항목</div><div class="v">' + P.ledger.length + '</div><div class="d">인터뷰에서 ' + ivF + " · 기록에서 " + P.ledger.filter((f) => f.src === "record").length + "</div></section>" +
+      '<section class="sheet mcard c3 stat"><div class="l">Records 항목</div><div class="v">' + P.ledger.length + '</div><div class="d">인터뷰에서 ' + ivF + " · 기록에서 " + P.ledger.filter((f) => f.src === "record").length + "</div></section>" +
       '<section class="sheet mcard c3 stat"><div class="l">개정 이력</div><div class="v">' + revStr() + '</div><div class="d">최근 ' + (P.revLog.length ? fmtDot(P.revLog[P.revLog.length - 1].at) : "없음") + "</div></section>" +
       '<section class="sheet mcard c6"><h4>챕터별 진도</h4><div class="sub">계획 100% 대비 실적 · 완료는 초록</div>' + chRows + chTbl + "</section>" +
       '<section class="sheet mcard c6"><h4>라이프 휠 · 만족도와 중요도의 차이</h4><div class="sub">차이가 큰 순서로 정렬</div>' + wheelDumbbell(ws) + '<details class="tbl"><summary>표로 보기</summary><table><thead><tr><th>영역</th><th>만족(0~10)</th><th>중요(1~5)</th><th>우선순위</th></tr></thead><tbody>' + ws.map((w) => "<tr><td>" + w.name + "</td><td>" + (w.sat ?? "–") + "</td><td>" + (w.imp ?? "–") + "</td><td>" + (w.gap ?? "–") + "</td></tr>").join("") + "</tbody></table></details></section>" +
@@ -43,7 +43,7 @@ function viewMetrics() {
       '<section class="sheet mcard c6"><h4>원하는 것 · 종류 × 시기</h4><div class="sub">' + W.length + "개 · 진행 중 " + W.filter((w) => w.status === "doing").length + " · 이룸 " + W.filter((w) => w.status === "done").length + "</div>" + hm + "</section>" +
       '<section class="sheet mcard c6"><h4>완성도 추이</h4><div class="sub">하루 한 점, 그날의 마지막 값</div>' + (pl.length >= 2 ? lineSVG(pl, { h: 180 }) : '<div class="empty">이틀 이상 기록되면 추이선이 그려져요. 오늘 ' + pct + "%</div>") + "</section>" +
       '<section class="sheet mcard c6"><h4>기록 · 연도별</h4><div class="sub">기록 ' + S.LOG.items.length + "건</div>" + recBars + "</section>" +
-      '<section class="sheet mcard c6"><h4>개정 이력</h4><div class="sub">챕터 완료, 초상·지도 갱신, 인터뷰 누적 시 올라가요</div><ul class="list-plain">' + (revs.map((r) => '<li><span class="rev-tri">' + pad2(r.rev) + '</span><span style="flex:1">' + esc(r.note) + '</span><span class="mono muted" style="font-size:11px">' + fmtDot(r.at) + "</span></li>").join("") || '<li class="muted">아직 개정 이력이 없어요.</li>') + "</ul></section>" +
+      '<section class="sheet mcard c6"><h4>개정 이력</h4><div class="sub">챕터 완료, 자화상·Network 갱신, 인터뷰 누적 시 올라가요</div><ul class="list-plain">' + (revs.map((r) => '<li><span class="rev-tri">' + pad2(r.rev) + '</span><span style="flex:1">' + esc(r.note) + '</span><span class="mono muted" style="font-size:11px">' + fmtDot(r.at) + "</span></li>").join("") || '<li class="muted">아직 개정 이력이 없어요.</li>') + "</ul></section>" +
     "</div>" +
-    '<div class="dwg-foot">' + titleBlock([["도판", "IV"], ["제목", "지표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["출처", "응답 원값"]]) + "</div>";
+    '<div class="dwg-foot">' + titleBlock([["제목", "지표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["출처", "응답 원값"]]) + "</div>";
 }

@@ -6,13 +6,13 @@ const DRAWING_VIEWS = ["portrait", "map", "gantt", "metrics"];
 function buildShell() {
   const nav = (v, icon, label) => '<a href="#' + v + '" data-go="' + v + '">' + icon + "<span>" + label + "</span></a>";
   $("#app").innerHTML =
-    '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">Atlas</div><div class="brand-sub">나의 지도책</div></div></div><div class="brand-who"><span id="rOwner"></span><span class="mono" id="rRev"></span></div></div>' +
-    '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "개요") + nav("ledger", I.ledger, "원장") + nav("journey", I.route, "탐구") + nav("interview", I.chat, "AI 인터뷰") + nav("log", I.log, "기록") + nav("tree", I.tree, "생각 나무") +
-    '<div class="nav-label">지도</div>' + nav("portrait", I.person, "자기 초상") + nav("map", I.map, "관계 지도") + nav("gantt", I.gantt, "인생 연표") + nav("metrics", I.chart, "지표") +
-    '<div class="nav-label">꺼내 쓰기</div>' + nav("export", I.pack, "용도별 팩") + "</nav>" +
+    '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">Atlas</div></div></div><div class="brand-who"><span id="rOwner"></span><span class="mono" id="rRev"></span></div></div>' +
+    '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "개요") + nav("ledger", I.ledger, "Records") + nav("journey", I.route, "탐구") + nav("interview", I.chat, "AI 인터뷰") + nav("log", I.log, "기록") + nav("tree", I.tree, "생각 나무") +
+    '<div class="nav-label">한눈에 보기</div>' + nav("portrait", I.person, "자화상") + nav("map", I.map, "Network") + nav("gantt", I.gantt, "연표") + nav("metrics", I.chart, "지표") +
+    '<div class="nav-label">꺼내 쓰기</div>' + nav("export", I.pack, "Pack") + "</nav>" +
     '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div><details class="diag"><summary>연결 상태</summary><div class="diag-body"></div></details></div></aside>' +
     '<div class="main"><header class="topbar-m"><div class="brand-mark">' + I.logo + '<span class="brand-name">Atlas</span></div><div class="row" style="gap:10px"><span class="mono muted" id="mRev" style="font-size:11px"></span><span class="save-state"><i></i><span>저장됨</span></span></div></header><main class="page" id="page"></main></div>' +
-    '<nav class="tabbar" aria-label="하단 메뉴">' + [["home", I.home, "개요"], ["ledger", I.ledger, "원장"], ["journey", I.route, "탐구"], ["interview", I.chat, "인터뷰"], ["export", I.pack, "팩"]].map(([v, ic, l]) => '<a href="#' + v + '" data-go="' + v + '" data-tab="' + v + '">' + ic + l + "</a>").join("") + "</nav></div>";
+    '<nav class="tabbar" aria-label="하단 메뉴">' + [["home", I.home, "개요"], ["ledger", I.ledger, "Records"], ["journey", I.route, "탐구"], ["interview", I.chat, "인터뷰"], ["export", I.pack, "Pack"]].map(([v, ic, l]) => '<a href="#' + v + '" data-go="' + v + '" data-tab="' + v + '">' + ic + l + "</a>").join("") + "</nav></div>";
   setSave(S.mode === "cloud" ? "idle" : S.mode === "local" ? "local" : "off");
 }
 let lastView = null;
@@ -178,7 +178,7 @@ const ACT = {
     const v = $("#newEntValue"), val = v && v.value.trim(); if (!val) { v && v.focus(); toast("내용을 적어 주세요."); return; }
     const d = normYM($("#newEntDate").value); if (!d.ok) { toast("날짜는 2024 또는 2024-05처럼 적어 주세요."); return; }
     addEntry({ cat: a.dataset.cat, sub: $("#newEntSub").value.trim(), label: $("#newEntLabel").value.trim(), value: val, date: d.v, conf: $("#newEntEst").checked ? "est" : "sure" });
-    needDirty(); render(); toast("원장에 적었어요."); const f = $("#newEntLabel"); if (f) f.focus();
+    needDirty(); render(); toast("Records에 적었어요."); const f = $("#newEntLabel"); if (f) f.focus();
   },
   entryDel: (a) => {
     const id = a.dataset.id; const P = S.P; const f = P.ledger.find((x) => x.id === id);
@@ -193,7 +193,7 @@ const ACT = {
     const i = +a.dataset.i, q = S.NUDGE.questions[i], el = $("#nq_" + i), v = el && el.value.trim(); if (!q || !v) { el && el.focus(); return; }
     const e = addEntry({ cat: CAT_BY[q.cat] ? q.cat : "etc", label: q.label || "", value: v, src: "nudge" });
     if (q.entry) { const old = S.P.ledger.find((x) => x.id === q.entry); if (old) old.up = nowISO(); }
-    q.done = true; q.answer = e.id; q.at = nowISO(); needDirty(); render(); toast("원장에 적었어요.");
+    q.done = true; q.answer = e.id; q.at = nowISO(); needDirty(); render(); toast("Records에 적었어요.");
   },
   nudgeSkip: (a) => { const q = S.NUDGE.questions[+a.dataset.i]; if (!q) return; q.skip = true; needDirty(); render(); },
   /* export */
@@ -259,7 +259,7 @@ const ACT = {
       const fs = await aiExtractFromRecord(r);
       r.extracted = []; fs.forEach((f) => r.extracted.push(addEntry({ cat: f.cat, label: f.label, value: f.text, src: "record", rec: r.id }).id));
       r.extractedNone = !fs.length; markDirty();
-      toast(fs.length ? "사실 " + fs.length + "개를 원장에 더했어요." : "새로 뽑을 사실이 없었어요.");
+      toast(fs.length ? "사실 " + fs.length + "개를 Records에 더했어요." : "새로 뽑을 사실이 없었어요.");
     } catch (e) { toast(aiErrMsg(e), 4200); }
     S.ui.busy["rec_" + r.id] = false; render();
   },
@@ -292,7 +292,7 @@ function scrollCh() { const el = $("#chSheet"); if (el) { const top = el.getBoun
 
 /* ---------------- start ---------------- */
 (async function main() {
-  $("#app").innerHTML = '<div class="boot">' + I.logo.replace("<svg", '<svg width="40" height="40"') + "<span>ATLAS · 지도책을 펴는 중</span></div>";
+  $("#app").innerHTML = '<div class="boot">' + I.logo.replace("<svg", '<svg width="40" height="40"') + "<span>ATLAS · 불러오는 중</span></div>";
   const h = (location.hash || "").replace("#", ""); if (ROUTES[h]) S.ui.view = h;
   try { await boot(); } catch (e) { S.mode = "local"; S.P = ensureShape(blankProfile()); }
   buildShell(); render();

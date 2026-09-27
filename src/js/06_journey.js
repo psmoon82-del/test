@@ -53,7 +53,7 @@ function viewJourney() {
   foot += "</div>";
   const needHint = !onResult && cur && !canNext ? '<p class="muted" style="font-size:12px;text-align:right;margin-top:8px">모든 문항에 답하면 다음으로 넘어갈 수 있어요.</p>' : "";
 
-  return '<div class="page-head"><div><div class="eyebrow">Explore · 탐구</div><h1>탐구</h1><p class="lede">아홉 개의 장을 지나며 나라는 지도의 윤곽을 그립니다. 대부분 고르기만 하면 돼요. 순서를 건너뛰어도 괜찮아요. 모든 답은 바로 저장돼요.</p></div></div>' +
+  return '<div class="page-head"><div><div class="eyebrow">Explore · 탐구</div><h1>탐구</h1><p class="lede">아홉 개의 장을 지나며 나의 윤곽을 그립니다. 대부분 고르기만 하면 돼요. 순서를 건너뛰어도 괜찮아요. 모든 답은 바로 저장돼요.</p></div></div>' +
     '<div class="jr">' + idx + '<section class="sheet lift" id="chSheet">' + head + body + foot + "</section></div>" + needHint;
 }
 
@@ -258,7 +258,7 @@ function chapterResult(id) {
       break;
     }
     case "timeline": {
-      h = '<div class="stack">' + ganttSVG(P, { compact: true }) + '<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">전체 연표는 지도 III에서 확대하고 편집할 수 있어요.</span><button class="btn" data-act="go" data-view="gantt">인생 연표 열기' + I.arrow + "</button></div>" + insightBox("timeline") + "</div>";
+      h = '<div class="stack">' + ganttSVG(P, { compact: true }) + '<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">전체 연표는 연표 화면에서 확대하고 편집할 수 있어요.</span><button class="btn" data-act="go" data-view="gantt">연표 열기' + I.arrow + "</button></div>" + insightBox("timeline") + "</div>";
       break;
     }
   }

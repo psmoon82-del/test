@@ -1,11 +1,11 @@
-/* ============================================================ EXPORT · 팩과 파일
+/* ============================================================ EXPORT · Pack and files
    Packs are Markdown written for a reader who has never met the owner (a person or an AI).
    Excel sheets mirror the data model one table per sheet, so the same file can be edited and uploaded back. */
 function packText(P, pack) {
   const b = P.basics, L = [];
   const who = b.nick || b.name || "나";
   L.push("# " + who + "에 대한 참고 자료 — " + pack.name);
-  L.push("기준일 " + fmtDot(nowISO()) + " · Atlas(나의 지도책)에서 내보냄");
+  L.push("기준일 " + fmtDot(nowISO()) + " · Atlas에서 내보냄");
   L.push("");
   L.push("> 이 자료는 본인이 직접 정리한 기록입니다. 용도: " + pack.d + ". 이 자료를 바탕으로 답해 주고, 자료에 없는 것은 추측하지 말고 물어봐 주세요. '추정'이 붙은 항목은 확실하지 않은 정보입니다.");
   const part = (k) => pack.parts.includes(k);
@@ -66,7 +66,7 @@ const byName = (list, name, key) => { const x = list.find((o) => o[key || "name"
 const pairId = (pairs, label) => { const x = pairs.find((p) => p[1] === label || p[0] === label); return x ? x[0] : null; };
 const yes = (v) => /^(y|yes|o|true|1|예|네|추정|민감)$/i.test(String(v || "").trim());
 const XL_SHEETS = [
-  { name: "원장", key: "ledger",
+  { name: "Records", key: "ledger",
     rows: (P) => P.ledger.map((e) => ({ id: e.id, 분류: CAT_BY[e.cat].name, 세부: e.sub || "", 항목: e.label || "", 내용: e.value || "", 날짜: e.date || "", 민감: e.sens === "sensitive" ? "Y" : "", 추정: e.conf === "est" ? "Y" : "", 출처: srcLabel(e.src), 수정일: String(e.up || "").slice(0, 10) })),
     list: (P) => P.ledger,
     toItem: (r) => { const v = String(r.내용 || "").trim(); if (!v) return null; const cat = byName(LEDGER_CATS, String(r.분류 || "").trim()) || "etc"; return { cat, sub: String(r.세부 || ""), label: String(r.항목 || ""), value: v, date: normYM(r.날짜).ok ? normYM(r.날짜).v : null, sens: yes(r.민감) || SENSITIVE_CATS.has(cat) ? "sensitive" : "normal", conf: yes(r.추정) ? "est" : "sure" }; },
@@ -130,7 +130,7 @@ async function buildWorkbook(P) {
   add("기본정보", basicsRows(P).map(({ 항목, 값 }) => ({ 항목, 값 })));
   XL_SHEETS.forEach((sh) => add(sh.name, sh.rows(P)));
   add("응답", answerRows(P));
-  add("안내", [{ 설명: "Atlas(나의 지도책) 원본 데이터입니다. '응답'과 '안내'를 뺀 시트는 고쳐서 다시 올릴 수 있어요. id가 있는 행은 그 항목을 고치고, id가 비어 있는 행은 새로 추가해요. 행을 지워도 앱의 데이터는 지워지지 않아요." }]);
+  add("안내", [{ 설명: "Atlas 원본 데이터입니다. '응답'과 '안내'를 뺀 시트는 고쳐서 다시 올릴 수 있어요. id가 있는 행은 그 항목을 고치고, id가 비어 있는 행은 새로 추가해요. 행을 지워도 앱의 데이터는 지워지지 않아요." }]);
   return X.write(wb, { bookType: "xlsx", type: "array" });
 }
 /* compare an uploaded workbook with the current data; nothing changes until applyImport */
@@ -180,7 +180,7 @@ function viewExport() {
   const imp = S.ui.importPlan;
   const packs = '<div class="packs">' + PACKS.map((p) => '<button class="pack ' + (p.id === pack.id ? "on" : "") + '" data-act="packSel" data-id="' + p.id + '"><b>' + esc(p.name) + "</b><span>" + esc(p.d) + "</span></button>").join("") + "</div>";
   const kb = Math.max(1, Math.round(new Blob([text]).size / 1024));
-  const preview = '<section class="sheet pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>' + esc(pack.name) + ' 팩</h3><span class="mono muted" style="font-size:11.5px">' + text.split("\n").length + "줄 · " + kb + "KB</span></div>" +
+  const preview = '<section class="sheet pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>' + esc(pack.name) + ' Pack</h3><span class="mono muted" style="font-size:11.5px">' + text.split("\n").length + "줄 · " + kb + "KB</span></div>" +
     '<p class="muted" style="font-size:12.5px">이 글을 복사해서 ChatGPT, Claude, Gemini 같은 AI 대화의 첫 메시지에 붙여 넣으세요. 그다음 원하는 일을 부탁하면 돼요.</p>' +
     '<textarea class="input mono pack-text" id="packText" rows="14" readonly>' + esc(text) + "</textarea>" +
     '<div class="row"><button class="btn primary" data-act="packCopy">' + I.copy + "복사하기</button><button class=\"btn\" data-act=\"packSave\">" + I.down + ".md 파일로 저장</button></div></section>";
@@ -191,7 +191,7 @@ function viewExport() {
     (imp ? importPreview(imp) : "") + "</section>";
   const hist = P.meta.exports.slice(-8).reverse();
   const log = '<section class="sheet pad"><h3 style="margin-bottom:8px">내보낸 기록</h3><ul class="list-plain">' + (hist.length ? hist.map((x) => '<li><span class="mono muted" style="font-size:11.5px;min-width:92px">' + fmtDot(x.at) + " " + fmtTime(x.at).split(" ")[1] + "</span><span>" + esc(({ copy: "복사", md: ".md 저장", json: "JSON 저장", xlsx: "엑셀 저장", import: "엑셀 올리기" })[x.kind] || x.kind) + (x.pack ? " · " + esc(PACK_BY[x.pack]?.name || x.pack) : "") + "</span></li>").join("") : '<li class="muted">아직 내보낸 적이 없어요.</li>') + "</ul></section>";
-  return '<div class="page-head"><div><div class="eyebrow">Packs · 내보내기</div><h1>용도별 팩</h1><p class="lede">필요한 일에 맞는 부분만 골라 다른 사람이나 AI가 바로 읽을 수 있는 글로 만들어요. 건강·재정 정보도 해당 팩에 포함돼요.</p></div></div>' +
+  return '<div class="page-head"><div><div class="eyebrow">Pack · 꺼내 쓰기</div><h1>Pack</h1><p class="lede">필요한 일에 맞는 부분만 골라 다른 사람이나 AI가 바로 읽을 수 있는 글로 만들어요. 건강·재정 정보도 해당 Pack에 포함돼요.</p></div></div>' +
     packs + '<div class="export-grid">' + preview + '<div class="stack">' + files + log + "</div></div>";
 }
 function importPreview(p) {

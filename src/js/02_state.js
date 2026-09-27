@@ -221,8 +221,8 @@ function nextAction(P) {
     const st = chState(P, ch.id);
     return { kind: "ch", ch, label: (st === "doing" ? "이어서 하기 · " : "시작하기 · ") + ch.code + " " + ch.name, desc: ch.title, href: "#journey/" + ch.id };
   }
-  if (!S.AI.portrait) return { kind: "portrait", label: "자기 초상 그리기", desc: "탐구를 모두 마쳤어요. Claude가 한 장의 초상으로 정리합니다.", href: "#portrait" };
-  return { kind: "interview", label: "AI 인터뷰", desc: "빈 곳을 대화로 채워 지도를 더 선명하게 만들어요.", href: "#interview" };
+  if (!S.AI.portrait) return { kind: "portrait", label: "자화상 그리기", desc: "탐구를 모두 마쳤어요. Claude가 한 장의 초상으로 정리합니다.", href: "#portrait" };
+  return { kind: "interview", label: "AI 인터뷰", desc: "빈 곳을 대화로 채워 기록을 더 선명하게 만들어요.", href: "#interview" };
 }
 function bumpRev(note) {
   const P = S.P; P.rev = (P.rev || 0) + 1;

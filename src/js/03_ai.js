@@ -52,7 +52,7 @@ function digest(P, opt) {
   const ev = P.timeline.events.filter((x) => x.s).sort((a, b) => ym2num(a.s) - ym2num(b.s));
   if (ev.length) L.push("[연대기] " + ev.map((x) => fmtYM(x.s) + (x.e ? "~" + fmtYM(x.e) : "") + " " + x.label + (x.est ? "(추정)" : "")).join(", "));
   const led = ledgerLines(P, opt.cats, opt.facts ? Math.ceil(opt.facts / 3) : 20);
-  if (led) L.push("[원장: 직접 기록하거나 대화에서 알게 된 사실]\n" + led);
+  if (led) L.push("[Records: 직접 기록하거나 대화에서 알게 된 사실]\n" + led);
   if (opt.log) {
     const recs = S.LOG.items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, opt.log);
     if (recs.length) L.push("[최근 기록]\n" + recs.map((r) => "- " + (RT_BY[r.type]?.name || r.type) + " " + fmtYM(r.date) + ": " + cut(r.text, 130)).join("\n"));
@@ -114,7 +114,7 @@ function chapterFocus(P, id) {
 }
 async function aiChapterInsight(id) {
   const P = S.P; const ch = CH_BY[id];
-  const prompt = "당신은 자기 이해 도구 'Atlas(나의 지도책)'의 해석가입니다. 사용자가 방금 '" + ch.code + " " + ch.name + "(" + ch.frame + ")'를 마쳤습니다.\n" + STYLE_RULES +
+  const prompt = "당신은 자기 이해 도구 'Atlas'의 해석가입니다. 사용자가 방금 '" + ch.code + " " + ch.name + "(" + ch.frame + ")'를 마쳤습니다.\n" + STYLE_RULES +
     "\n\n[이번 챕터 결과]\n" + chapterFocus(P, id) +
     "\n\n[참고: 프로필 전체 요약]\n" + digest(P) +
     "\n\n이 챕터 결과를 해석해 주세요. 다른 챕터·메모와 연결되거나 어긋나는 지점이 있으면 구체적으로 짚으세요." +
@@ -127,13 +127,13 @@ async function aiChapterInsight(id) {
 }
 async function aiPortrait() {
   const P = S.P;
-  const prompt = "당신은 한 사람의 자기 초상을 한 장으로 정리하는 편집자입니다. 아래는 그가 직접 답하고 기록한 프로필 전체입니다.\n" + STYLE_RULES +
+  const prompt = "당신은 한 사람의 자화상을 한 장으로 정리하는 편집자입니다. 아래는 그가 직접 답하고 기록한 프로필 전체입니다.\n" + STYLE_RULES +
     "\n\n" + digest(P, { full: true, facts: 60, log: 12 }) +
     '\n\n다음 JSON 하나로만 답하세요. 모든 항목은 위 근거에서 나와야 합니다.\n{"archetype": "이 사람을 요약하는 이름, 4~10자 (예: 조용한 설계자)", "headline": "한 문장 요약, 45자 이내", "essence": "3~4문장. 성격·가치·에너지·원하는 것이 어떻게 맞물리는지", "strengths": ["강점 3개, 각 25자 이내, 근거 포함"], "shadows": ["주의할 패턴 2개, 각 30자 이내, 비난이 아니라 관찰"], "drives": ["이 사람을 움직이는 것 3개, 짧게"], "tasteDNA": ["취향의 공통분모 3개, 짧게"], "nowFocus": "지금 가장 돌봐야 할 것 한 문장", "question": "지금 스스로에게 던질 질문 한 문장", "gaps": "근거가 부족해 확신하기 어려운 부분 한 문장"}';
   const r = await aiJSON(prompt, { modelTier: "complex" });
   if (!r || !r.archetype) throw { code: "invalid_json" };
   S.AI.portrait = Object.assign(r, { at: nowISO(), rev: (P.rev || 0) + 1 });
-  bumpRev("자기 초상 갱신");
+  bumpRev("자화상 갱신");
   markDirty("ai", "profile");
   return S.AI.portrait;
 }
@@ -149,7 +149,7 @@ async function aiMap(nodes) {
   const links = r.links.filter((l) => ids.has(l.a) && ids.has(l.b) && l.a !== l.b).slice(0, 30);
   const themes = (r.themes || []).map((t) => ({ name: String(t.name || ""), desc: String(t.desc || ""), members: (t.members || []).filter((m) => ids.has(m)) })).filter((t) => t.name && t.members.length).slice(0, 6);
   S.AI.map = { links, themes, at: nowISO(), rev: (P.rev || 0) + 1 };
-  bumpRev("관계 지도 해석");
+  bumpRev("Network 해석");
   markDirty("ai", "profile");
   return S.AI.map;
 }
@@ -174,9 +174,9 @@ function interviewRules(P, topic) {
     const g = gapList(P).slice(0, 3);
     const ws = wheelStats(P).filter((w) => w.gap != null).sort((a, b) => b.gap - a.gap).slice(0, 2);
     const ec = emptyCats(P).slice(0, 4);
-    focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ec.length ? ". 원장에서 아직 빈 분류: " + ec.map((c) => c.name).join(", ") : "") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
+    focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ec.length ? ". Records에서 아직 빈 분류: " + ec.map((c) => c.name).join(", ") : "") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
   } else focus = "사용자가 고른 주제: " + (TOPICS.find((t) => t[0] === topic) || [0, "자유"])[1] + ". 이 분류에서 아직 비어 있거나 오래된 것을 우선.";
-  return "당신은 자기 이해 도구 'Atlas(나의 지도책)'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
+  return "당신은 자기 이해 도구 'Atlas'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
     "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 건강·의료, 재정·보험 같은 민감한 정보도 기록 대상이다. 필요하면 구체적인 수치와 날짜까지 묻되, 사용자가 원하지 않으면 바로 넘어간다.\n- 진단하거나 성격을 단정하지 않는다.\n" +
     "[이번 인터뷰 초점] " + focus + "\n\n[프로필 요약]\n" + digest(P, S.aiLite ? { facts: 20 } : { facts: 50, log: 6 });
 }

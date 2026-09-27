@@ -1,4 +1,4 @@
-/* ============================================================ LEDGER · 원장 */
+/* ============================================================ LEDGER · Records */
 const STALE_DAYS = 365;
 function addEntry(f) {
   const now = nowISO();
@@ -35,16 +35,16 @@ function catLinked(P, c) {
     case "taste": return '<p class="linked-sum">좋아하는 것 ' + allLoveItems(P).length + "개 · " + LOVE_CATS.filter((x) => (P.loves.cats[x.id]?.items || []).length).map((x) => x.name).join(", ") + "</p>" + link("취향 탐구 열기", "openCh", 'data-id="loves"');
     case "thoughts": return '<p class="linked-sum">가지 ' + treeChildren(P, null).length + "개 · 주제 " + P.tree.nodes.filter((x) => x.parent && x.kind !== "word").length + "개</p>" + link("생각 나무 열기", "go", 'data-view="tree"');
     case "goals": return '<p class="linked-sum">원하는 것 ' + P.wants.items.length + "개 · 진행 중 " + P.wants.items.filter((w) => w.status === "doing").length + "</p>" + link("원하는 것 열기", "openCh", 'data-id="wants"');
-    case "history": return '<p class="linked-sum">이정표 ' + P.timeline.events.length + "개 · 추정 " + P.timeline.events.filter((e) => e.est).length + "</p>" + link("인생 연표 열기", "go", 'data-view="gantt"');
+    case "history": return '<p class="linked-sum">이정표 ' + P.timeline.events.length + "개 · 추정 " + P.timeline.events.filter((e) => e.est).length + "</p>" + link("연표 열기", "go", 'data-view="gantt"');
   }
   return "";
 }
 function viewLedger() {
   const P = S.P, cur = S.ui.ledCat;
   const staleAll = P.ledger.filter(isStale).length;
-  const idx = '<nav class="led-index" aria-label="원장 분류"><button class="led-cat ' + (!cur ? "on" : "") + '" data-act="ledCat" data-id=""><span>전체</span><span class="n">' + P.ledger.length + "</span></button>" +
+  const idx = '<nav class="led-index" aria-label="Records 분류"><button class="led-cat ' + (!cur ? "on" : "") + '" data-act="ledCat" data-id=""><span>전체</span><span class="n">' + P.ledger.length + "</span></button>" +
     LEDGER_CATS.map((c) => { const k = catCounts(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
-      return '<button class="led-cat ' + (cur === c.id ? "on" : "") + (k.own || k.linked ? "" : " empty") + '" data-act="ledCat" data-id="' + c.id + '"' + (k.linked ? ' title="원장 기록 ' + k.own + "개, " + k.label + " " + k.linked + '개"' : "") + '><span>' + c.name + '</span><span class="n">' + (st ? '<i class="stale-dot" title="확인 필요 ' + st + '"></i>' : "") + k.own + (k.linked ? '<small class="lk">+' + k.linked + "</small>" : "") + "</span></button>"; }).join("") +
+      return '<button class="led-cat ' + (cur === c.id ? "on" : "") + (k.own || k.linked ? "" : " empty") + '" data-act="ledCat" data-id="' + c.id + '"' + (k.linked ? ' title="Records 기록 ' + k.own + "개, " + k.label + " " + k.linked + '개"' : "") + '><span>' + c.name + '</span><span class="n">' + (st ? '<i class="stale-dot" title="확인 필요 ' + st + '"></i>' : "") + k.own + (k.linked ? '<small class="lk">+' + k.linked + "</small>" : "") + "</span></button>"; }).join("") +
     '<p class="led-note">+ 숫자는 연결된 목록(기본 항목, 좋아하는 것, 생각 나무, 원하는 것, 이정표)의 개수예요. 분류를 누르면 위쪽에서 바로 열 수 있어요.</p></nav>';
   const cats = cur ? [CAT_BY[cur]] : LEDGER_CATS.filter((c) => P.ledger.some((e) => e.cat === c.id));
   let body = "";
@@ -58,9 +58,9 @@ function viewLedger() {
         : cur ? '<p class="empty">아직 기록이 없어요. 아래에서 추가해 보세요.</p>' : "") +
       (cur ? entryAdder(c) : "") + "</section>";
   });
-  if (!cats.length) body = '<p class="empty">원장이 비어 있어요. 왼쪽에서 분류를 골라 첫 기록을 남겨 보세요.</p>';
-  return '<div class="page-head"><div><div class="eyebrow">Ledger · 원장</div><h1>나에 대한 모든 기록</h1><p class="lede">분류별로 사실을 쌓는 곳이에요. 직접 적은 것, 인터뷰와 기록에서 뽑은 것이 모두 여기에 모여요. 1년 넘게 손대지 않은 항목에는 확인 표시가 붙어요.</p></div>' +
-    '<input class="input" id="ledQ" placeholder="원장 검색" value="' + esc(S.ui.ledQ || "") + '" style="max-width:240px"></div>' +
+  if (!cats.length) body = '<p class="empty">Records가 비어 있어요. 왼쪽에서 분류를 골라 첫 기록을 남겨 보세요.</p>';
+  return '<div class="page-head"><div><div class="eyebrow">Records · raw data</div><h1>나에 대한 모든 기록</h1><p class="lede">분류별로 사실을 쌓는 곳이에요. 직접 적은 것, 인터뷰와 기록에서 뽑은 것이 모두 여기에 모여요. 1년 넘게 손대지 않은 항목에는 확인 표시가 붙어요.</p></div>' +
+    '<input class="input" id="ledQ" placeholder="Records 검색" value="' + esc(S.ui.ledQ || "") + '" style="max-width:240px"></div>' +
     (staleAll ? '<div class="banner" style="margin-bottom:14px"><span>1년 넘게 확인하지 않은 항목이 <b>' + staleAll + "개</b> 있어요. 항목 옆의 <b>아직 맞아요</b>를 누르거나 고쳐 주세요.</span></div>" : "") +
     '<div class="led">' + idx + '<div class="led-body" id="ledBody">' + body + "</div></div>";
 }

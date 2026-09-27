@@ -1,6 +1,7 @@
-# Atlas · 나의 지도책 (구 LIFE DOCK)
+# Atlas (구 LIFE DOCK)
 
-나에 대한 모든 것을 분류해 쌓고(원장), 선택형 탐구와 AI 인터뷰로 채우고, 용도별 팩으로 꺼내 AI나 사람에게 건네는 개인 데이터 도구.
+나에 대한 모든 것을 분류해 쌓고(Records), 선택형 탐구와 AI 인터뷰로 채우고, 용도별 Pack으로 꺼내 AI나 사람에게 건네는 개인 데이터 도구.
+화면 이름(사용자 결정 2026-09): 앱 Atlas(부제 없음) · Records(raw data, 코드상 ledger) · Network(관계 그래프, 코드상 map) · Pack(코드상 export). 나머지는 한글: 개요·탐구·AI 인터뷰·기록·생각 나무·자화상·연표·지표. 번역투·감성 조어는 피한다.
 claude.ai Artifact로 배포된다: https://claude.ai/artifact/AfkbQn3BB16ocdAapZ2oXU (소유자 전용, 런타임 contract 0.2.60)
 
 ## 구조 (3층)

@@ -1,7 +1,7 @@
 /* ============================================================ domain constants (generic — no personal data here) */
 const CH = [
   { id: "basics", code: "00", stage: "기본", name: "기본 정보", title: "나는 누구인가", mins: 2, frame: "자기소개의 기본 틀",
-    why: "지도를 그리기 전에 기준점부터 찍습니다. 이름, 나이, 사는 곳, 가족, 하는 일. 뒤에 나올 모든 해석이 여기서 출발해요." },
+    why: "모든 해석의 기준점이 되는 기본 정보예요. 이름, 나이, 사는 곳, 가족, 하는 일을 적어요." },
   { id: "wheel", code: "01", stage: "현재", name: "지금의 나", title: "지금 나는 어디가 기울어 있나", mins: 5, frame: "라이프 휠(Wheel of Life) · 코칭 도구",
     why: "삶의 여덟 영역마다 지금의 만족도와 나에게 중요한 정도를 따로 매깁니다. 둘의 차이가 큰 곳이 지금 손봐야 할 곳이에요." },
   { id: "ipip", code: "02", stage: "성격", name: "타고난 결", title: "나는 어떤 결을 가진 사람인가", mins: 4, frame: "Big Five · Mini-IPIP 20문항(공개 척도)",
@@ -15,14 +15,14 @@ const CH = [
   { id: "thoughts", code: "06", stage: "생각", name: "마음속 주제", title: "나는 무엇을 생각하며 사나", mins: 8, frame: "생각 나무(think tree)",
     why: "머릿속을 차지하는 주제를 가지처럼 뻗어 그려요. 가운데에서 시작해 가지를 치고, 옮기고, 합칠 수 있어요. 가지마다 지금 얼마나 무거운지 표시하면 마음의 지형이 보입니다." },
   { id: "wants", code: "07", stage: "목표", name: "원하는 것", title: "나는 어디로 가고 싶은가", mins: 6, frame: "Have · Do · Be · Learn · Give",
-    why: "갖고 싶은 것, 해보고 싶은 것, 되고 싶은 모습, 배우고 싶은 것, 나누고 싶은 것. 시기와 중요도를 매기면 인생 연표의 미래 구간이 채워집니다." },
-  { id: "timeline", code: "08", stage: "연대기", name: "연대기", title: "나는 어디서 와서 지금 여기에 있나", mins: 5, frame: "인생 연표(Life timeline)",
+    why: "갖고 싶은 것, 해보고 싶은 것, 되고 싶은 모습, 배우고 싶은 것, 나누고 싶은 것. 시기와 중요도를 매기면 연표의 미래 구간이 채워집니다." },
+  { id: "timeline", code: "08", stage: "연대기", name: "연대기", title: "나는 어디서 와서 지금 여기에 있나", mins: 5, frame: "연표(Life timeline)",
     why: "지나온 이정표와 앞으로의 계획을 하나의 시간축 위에 놓습니다. 추정으로 채운 연도는 확인하거나 고쳐 주세요." },
 ];
 const CH_BY = Object.fromEntries(CH.map((c) => [c.id, c]));
 const POST_STAGES = [
   { id: "interview", code: "09", stage: "대화", name: "AI 인터뷰", href: "#interview" },
-  { id: "portrait", code: "10", stage: "초상", name: "자기 초상", href: "#portrait" },
+  { id: "portrait", code: "10", stage: "초상", name: "자화상", href: "#portrait" },
 ];
 
 const WHEEL = [
@@ -220,7 +220,7 @@ const DOMAINS = [
 const DOM_BY = Object.fromEntries(DOMAINS.map((d) => [d.id, d]));
 const AREA_DOMAIN = { basics: "life", wheel: "life", family: "life", timeline: "life", traits: "traits", values: "values", energy: "energy", work: "energy", loves: "loves", thoughts: "thoughts", wants: "wants" };
 
-/* ============================================================ ledger (원장): every recorded fact lives in one of these */
+/* ============================================================ ledger (Records): every recorded fact lives in one of these */
 const LEDGER_CATS = [
   { id: "basic", name: "기본 정보", d: "신상, 학력, 자격, 연락처", subs: ["신상", "학력", "자격·면허", "연락·주소", "언어"] },
   { id: "work", name: "일·경력", d: "직무, 경력, 성과, 역량", subs: ["현재 일", "경력", "성과", "기술·역량", "일하는 환경"] },

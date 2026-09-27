@@ -90,7 +90,7 @@ function ganttSVG(P, o) {
     const lw = lab.length * 6.4 + 12;
     g += '<rect x="' + (x - lw / 2) + '" y="' + (HH - 12) + '" width="' + lw + '" height="15" rx="3" ' + st({ fill: "var(--signal)" }) + '/><text x="' + x + '" y="' + (HH - 1.5) + '" text-anchor="middle" ' + st({ fill: "#fff", "font-size": "10px", "font-weight": "600", "font-family": "var(--f-mono)" }) + ">" + esc(lab) + "</text>";
   }
-  return '<div class="gantt-shell"><div class="gantt-scroll"><svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" style="min-width:' + W + 'px;display:block" role="img" aria-label="인생 연표">' + g + "</svg></div></div>";
+  return '<div class="gantt-shell"><div class="gantt-scroll"><svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" style="min-width:' + W + 'px;display:block" role="img" aria-label="연표">' + g + "</svg></div></div>";
 }
 
 function viewGantt() {
@@ -113,5 +113,5 @@ function viewGantt() {
     edit + ganttSVG(P) +
     (undated.length ? '<div class="banner" style="margin-top:12px">연도가 없어 표시되지 않은 이정표: ' + undated.map((e) => '<button class="chip" data-act="evEdit" data-id="' + e.id + '">' + esc(e.label) + "</button>").join(" ") + "</div>" : "") +
     '<details class="tbl"><summary>표로 보기</summary><table><thead><tr><th>구분</th><th>항목</th><th>시작</th><th>끝</th><th>상태</th></tr></thead><tbody>' + P.timeline.events.slice().sort((a, b) => (ym2num(a.s) ?? 9999) - (ym2num(b.s) ?? 9999)).map((e) => "<tr><td>" + esc(LANE_BY[e.lane]?.name) + "</td><td>" + esc(e.label) + "</td><td>" + esc(fmtYM(e.s)) + "</td><td>" + esc(e.e ? fmtYM(e.e) : "") + "</td><td>" + (e.est ? "추정" : "확정") + "</td></tr>").join("") + "</tbody></table></details>" +
-    '<div class="dwg-foot">' + titleBlock([["도판", "III"], ["제목", "인생 연표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["항목", String(P.timeline.events.length) + " + " + P.wants.items.filter((w) => wantYear(w)).length], ["축척", ({ all: "1Y=9px", past: "1Y=36px", next: "1Y=36px" })[rng]]]) + "</div>";
+    '<div class="dwg-foot">' + titleBlock([["제목", "연표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["항목", String(P.timeline.events.length) + " + " + P.wants.items.filter((w) => wantYear(w)).length], ["축척", ({ all: "1Y=9px", past: "1Y=36px", next: "1Y=36px" })[rng]]]) + "</div>";
 }

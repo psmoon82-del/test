@@ -1,12 +1,12 @@
 /* ============================================================ MAPS common + I PORTRAIT */
-const DWGS = [["portrait", "I", "자기 초상"], ["map", "II", "관계 지도"], ["gantt", "III", "인생 연표"], ["metrics", "IV", "지표"]];
+const DWGS = [["portrait", "Portrait", "자화상"], ["map", "Network", "Network"], ["gantt", "Timeline", "연표"], ["metrics", "Metrics", "지표"]];
 function drawingHead(active, lede) {
   const d = DWGS.find((x) => x[0] === active);
-  return '<div class="page-head"><div><div class="eyebrow">Plate ' + d[1] + " · 지도" + "</div><h1>" + d[2] + '</h1><p class="lede">' + lede + "</p></div></div>" +
-    '<nav class="dwg-tabs" aria-label="지도">' + DWGS.map(([v, no, n]) => '<a href="#' + v + '" class="' + (v === active ? "on" : "") + '" data-act="go" data-view="' + v + '"><span class="mono">' + no + "</span>" + n + "</a>").join("") + "</nav>";
+  return '<div class="page-head"><div><div class="eyebrow">' + d[1] + "</div><h1>" + d[2] + '</h1><p class="lede">' + lede + "</p></div></div>" +
+    '<nav class="dwg-tabs" aria-label="한눈에 보기">' + DWGS.map(([v, no, n]) => '<a href="#' + v + '" class="' + (v === active ? "on" : "") + '" data-act="go" data-view="' + v + '">' + n + "</a>").join("") + "</nav>";
 }
 function drawingFoot(no, title, rev, date, drawn) {
-  return '<div class="dwg-foot">' + titleBlock([["도판", no], ["제목", esc(title)], ["판", rev], ["날짜", date], ["작성", esc(drawn)]]) + "</div>";
+  return '<div class="dwg-foot">' + titleBlock([["제목", esc(title)], ["판", rev], ["날짜", date], ["작성", esc(drawn)]]) + "</div>";
 }
 function sinceCount(iso) {
   if (!iso) return 0; const t = String(iso);
@@ -27,7 +27,7 @@ function viewPortrait() {
   else bar += '<span class="muted" style="font-size:12.5px">' + esc(S.aiOff ? aiErrMsg({ code: S.aiOff }) : "Claude 연결이 있는 화면에서 초상을 그릴 수 있어요.") + "</span>";
   const since = pr ? sinceCount(pr.at) : 0;
   if (pr && since) bar += '<span class="tag est">초상 이후 새로 쌓인 기록·사실 ' + since + "개</span>";
-  bar += '<span class="muted" style="font-size:12px;margin-left:auto">지도 완성도 ' + pct + "% · 채울수록 정확해져요</span></div>";
+  bar += '<span class="muted" style="font-size:12px;margin-left:auto">완성도 ' + pct + "% · 채울수록 정확해져요</span></div>";
 
   const headName = '<div class="pt-name">' + esc(b.name || "이름 없음") + (b.birthYear ? " · " + b.birthYear : "") + (b.region ? " · " + esc(b.region) : "") + (b.job ? " · " + esc(b.job) : "") + "</div>";
   const head = pr ? '<div class="pt-head">' + headName + '<div class="pt-arche">' + esc(pr.archetype) + '</div><div class="pt-line">' + esc(pr.headline || "") + "</div></div>"
@@ -63,5 +63,5 @@ function viewPortrait() {
 
   return drawingHead("portrait", "한 사람을 한 장으로. 응답과 기록 전체를 Claude가 읽고 이름과 문장을 붙입니다. 아래의 수치와 목록은 당신의 응답에서 바로 계산돼요.") + bar +
     '<article class="drawing"><div class="pt">' + head + '<div class="stack" style="gap:22px">' + left + '</div><div class="stack" style="gap:22px">' + right + "</div></div>" +
-    drawingFoot("I", "자기 초상", pr ? (pr.rev || 0) + "판" : "—", pr ? fmtDot(pr.at) : fmtDot(nowISO()), pr ? "Claude" : "자동 계산") + "</article>";
+    drawingFoot("I", "자화상", pr ? (pr.rev || 0) + "판" : "—", pr ? fmtDot(pr.at) : fmtDot(nowISO()), pr ? "Claude" : "자동 계산") + "</article>";
 }

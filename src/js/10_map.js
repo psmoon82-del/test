@@ -65,20 +65,20 @@ function viewMap() {
   let bar = '<div class="dwg-bar"><div class="map-legend">' + DOMAINS.map((d) => { const n = g.nodes.filter((x) => x.dom === d.id && x.kind === "leaf").length; return '<button class="chip ' + (S.ui.mapHide[d.id] ? "" : "on") + '" data-act="mapToggle" data-v="' + d.id + '" style="' + (S.ui.mapHide[d.id] ? "" : "border-color:" + d.color + ";color:var(--ink);background:var(--sheet)") + '"><i class="dot" style="background:' + d.color + '"></i>' + d.name + " " + n + "</button>"; }).join("") + "</div>";
   bar += '<span style="margin-left:auto" class="row">';
   if (busy) bar += '<span class="typing"><span class="spinner"></span>Claude가 숨은 연결을 찾는 중이에요. 1분 정도 걸려요.</span>';
-  else if (aiAvailable()) bar += '<button class="btn ' + (ai ? "" : "accent") + '" data-act="drawMap">' + I.spark + (ai ? "다시 해석" : "지도 해석하기") + "</button>";
+  else if (aiAvailable()) bar += '<button class="btn ' + (ai ? "" : "accent") + '" data-act="drawMap">' + I.spark + (ai ? "다시 해석" : "Network 해석하기") + "</button>";
   bar += "</span></div>";
   const themes = ai && ai.themes.length ? '<div class="row" style="justify-content:space-between;margin:20px 0 10px"><h3 style="font-size:15px">Claude가 찾은 주제</h3><span class="mono muted" style="font-size:11px">' + fmtDot(ai.at) + " · " + (ai.rev || 0) + "판" + '</span></div><div class="themes">' + ai.themes.map((t, i) => '<button class="theme" style="text-align:left" data-act="mapSel" data-id="theme_' + i + '"><b>' + esc(t.name) + "</b><p>" + esc(t.desc) + '</p><span class="mono muted" style="font-size:10.5px">' + t.members.length + "개 노드</span></button>").join("") + "</div>" :
-    '<p class="muted" style="margin-top:14px;font-size:13px">' + (aiAvailable() ? '"지도 해석하기"를 누르면 서로 다른 영역 사이의 숨은 연결과 3~5개의 주제를 찾아 지도 위에 겹쳐 그려요.' : "지금은 영역별 연결만 보여요. Claude 연결이 있는 화면에서 숨은 연결을 찾을 수 있어요.") + "</p>";
+    '<p class="muted" style="margin-top:14px;font-size:13px">' + (aiAvailable() ? '"Network 해석하기"를 누르면 서로 다른 영역 사이의 숨은 연결과 3~5개의 주제를 찾아 지도 위에 겹쳐 그려요.' : "지금은 영역별 연결만 보여요. Claude 연결이 있는 화면에서 숨은 연결을 찾을 수 있어요.") + "</p>";
   const tbl = '<details class="tbl"><summary>표로 보기 (노드 ' + g.nodes.length + " · 연결 " + g.links.length + ')</summary><table><thead><tr><th>영역</th><th>노드</th><th>설명</th></tr></thead><tbody>' + g.nodes.filter((n) => n.kind === "leaf").map((n) => "<tr><td>" + esc(DOM_BY[n.dom].name) + "</td><td>" + esc(n.label) + "</td><td>" + esc(cut(n.detail, 80)) + "</td></tr>").join("") + "</tbody></table>" +
     (ai && ai.links.length ? '<table style="margin-top:10px"><thead><tr><th>연결</th><th>이유</th></tr></thead><tbody>' + ai.links.map((l) => { const a = g.nodes.find((n) => n.id === l.a), c = g.nodes.find((n) => n.id === l.b); return a && c ? "<tr><td>" + esc(a.label) + " ↔ " + esc(c.label) + "</td><td>" + esc(l.why) + "</td></tr>" : ""; }).join("") + "</tbody></table>" : "") + "</details>";
   return drawingHead("map", "성격·가치·에너지·취향·마음속 주제·원하는 것을 하나의 지도에. 노드를 끌거나 눌러 보세요. 가운데의 나에서 가까울수록 자주 연결된 것들이에요.") + bar +
-    '<div class="map-wrap" id="mapWrap"><svg id="mapSvg" aria-label="관계 지도 (노드 ' + leafN + '개)"></svg><div class="map-side" id="mapSide" hidden></div><div id="mapMsg" class="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">지도 엔진을 불러오는 중…</div></div>' + themes + tbl +
-    '<div class="dwg-foot">' + titleBlock([["도판", "II"], ["제목", "관계 지도"], ["판", ai ? (ai.rev || 0) + "판" : "—"], ["노드", String(leafN)], ["숨은 연결", String(ai ? ai.links.length : 0)], ["축척", "FREE"]]) + "</div>";
+    '<div class="map-wrap" id="mapWrap"><svg id="mapSvg" aria-label="Network (노드 ' + leafN + '개)"></svg><div class="map-side" id="mapSide" hidden></div><div id="mapMsg" class="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">지도 엔진을 불러오는 중…</div></div>' + themes + tbl +
+    '<div class="dwg-foot">' + titleBlock([["제목", "Network"], ["판", ai ? (ai.rev || 0) + "판" : "—"], ["노드", String(leafN)], ["숨은 연결", String(ai ? ai.links.length : 0)], ["축척", "FREE"]]) + "</div>";
 }
 
 let mapSim = null;
 function afterMap() {
-  ensureD3().then((d3) => drawMapD3(d3)).catch(() => { const m = $("#mapMsg"); if (m) m.textContent = "지도 엔진(d3)을 불러오지 못했어요. 네트워크를 확인한 뒤 새로고침해 주세요. 아래 표로도 볼 수 있어요."; });
+  ensureD3().then((d3) => drawMapD3(d3)).catch(() => { const m = $("#mapMsg"); if (m) m.textContent = "그래프 엔진(d3)을 불러오지 못했어요. 네트워크를 확인한 뒤 새로고침해 주세요. 아래 표로도 볼 수 있어요."; });
 }
 function drawMapD3(d3) {
   const svgEl = $("#mapSvg"); if (!svgEl) return;

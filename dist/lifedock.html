@@ -1,4 +1,4 @@
-<title>Atlas 나의 지도책</title>
+<title>Atlas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Gowun+Batang:wght@400;700&display=swap">
 <style>
@@ -746,7 +746,7 @@ const I = {
 /* ============================================================ domain constants (generic — no personal data here) */
 const CH = [
   { id: "basics", code: "00", stage: "기본", name: "기본 정보", title: "나는 누구인가", mins: 2, frame: "자기소개의 기본 틀",
-    why: "지도를 그리기 전에 기준점부터 찍습니다. 이름, 나이, 사는 곳, 가족, 하는 일. 뒤에 나올 모든 해석이 여기서 출발해요." },
+    why: "모든 해석의 기준점이 되는 기본 정보예요. 이름, 나이, 사는 곳, 가족, 하는 일을 적어요." },
   { id: "wheel", code: "01", stage: "현재", name: "지금의 나", title: "지금 나는 어디가 기울어 있나", mins: 5, frame: "라이프 휠(Wheel of Life) · 코칭 도구",
     why: "삶의 여덟 영역마다 지금의 만족도와 나에게 중요한 정도를 따로 매깁니다. 둘의 차이가 큰 곳이 지금 손봐야 할 곳이에요." },
   { id: "ipip", code: "02", stage: "성격", name: "타고난 결", title: "나는 어떤 결을 가진 사람인가", mins: 4, frame: "Big Five · Mini-IPIP 20문항(공개 척도)",
@@ -760,14 +760,14 @@ const CH = [
   { id: "thoughts", code: "06", stage: "생각", name: "마음속 주제", title: "나는 무엇을 생각하며 사나", mins: 8, frame: "생각 나무(think tree)",
     why: "머릿속을 차지하는 주제를 가지처럼 뻗어 그려요. 가운데에서 시작해 가지를 치고, 옮기고, 합칠 수 있어요. 가지마다 지금 얼마나 무거운지 표시하면 마음의 지형이 보입니다." },
   { id: "wants", code: "07", stage: "목표", name: "원하는 것", title: "나는 어디로 가고 싶은가", mins: 6, frame: "Have · Do · Be · Learn · Give",
-    why: "갖고 싶은 것, 해보고 싶은 것, 되고 싶은 모습, 배우고 싶은 것, 나누고 싶은 것. 시기와 중요도를 매기면 인생 연표의 미래 구간이 채워집니다." },
-  { id: "timeline", code: "08", stage: "연대기", name: "연대기", title: "나는 어디서 와서 지금 여기에 있나", mins: 5, frame: "인생 연표(Life timeline)",
+    why: "갖고 싶은 것, 해보고 싶은 것, 되고 싶은 모습, 배우고 싶은 것, 나누고 싶은 것. 시기와 중요도를 매기면 연표의 미래 구간이 채워집니다." },
+  { id: "timeline", code: "08", stage: "연대기", name: "연대기", title: "나는 어디서 와서 지금 여기에 있나", mins: 5, frame: "연표(Life timeline)",
     why: "지나온 이정표와 앞으로의 계획을 하나의 시간축 위에 놓습니다. 추정으로 채운 연도는 확인하거나 고쳐 주세요." },
 ];
 const CH_BY = Object.fromEntries(CH.map((c) => [c.id, c]));
 const POST_STAGES = [
   { id: "interview", code: "09", stage: "대화", name: "AI 인터뷰", href: "#interview" },
-  { id: "portrait", code: "10", stage: "초상", name: "자기 초상", href: "#portrait" },
+  { id: "portrait", code: "10", stage: "초상", name: "자화상", href: "#portrait" },
 ];
 
 const WHEEL = [
@@ -965,7 +965,7 @@ const DOMAINS = [
 const DOM_BY = Object.fromEntries(DOMAINS.map((d) => [d.id, d]));
 const AREA_DOMAIN = { basics: "life", wheel: "life", family: "life", timeline: "life", traits: "traits", values: "values", energy: "energy", work: "energy", loves: "loves", thoughts: "thoughts", wants: "wants" };
 
-/* ============================================================ ledger (원장): every recorded fact lives in one of these */
+/* ============================================================ ledger (Records): every recorded fact lives in one of these */
 const LEDGER_CATS = [
   { id: "basic", name: "기본 정보", d: "신상, 학력, 자격, 연락처", subs: ["신상", "학력", "자격·면허", "연락·주소", "언어"] },
   { id: "work", name: "일·경력", d: "직무, 경력, 성과, 역량", subs: ["현재 일", "경력", "성과", "기술·역량", "일하는 환경"] },
@@ -1316,8 +1316,8 @@ function nextAction(P) {
     const st = chState(P, ch.id);
     return { kind: "ch", ch, label: (st === "doing" ? "이어서 하기 · " : "시작하기 · ") + ch.code + " " + ch.name, desc: ch.title, href: "#journey/" + ch.id };
   }
-  if (!S.AI.portrait) return { kind: "portrait", label: "자기 초상 그리기", desc: "탐구를 모두 마쳤어요. Claude가 한 장의 초상으로 정리합니다.", href: "#portrait" };
-  return { kind: "interview", label: "AI 인터뷰", desc: "빈 곳을 대화로 채워 지도를 더 선명하게 만들어요.", href: "#interview" };
+  if (!S.AI.portrait) return { kind: "portrait", label: "자화상 그리기", desc: "탐구를 모두 마쳤어요. Claude가 한 장의 초상으로 정리합니다.", href: "#portrait" };
+  return { kind: "interview", label: "AI 인터뷰", desc: "빈 곳을 대화로 채워 기록을 더 선명하게 만들어요.", href: "#interview" };
 }
 function bumpRev(note) {
   const P = S.P; P.rev = (P.rev || 0) + 1;
@@ -1494,7 +1494,7 @@ function digest(P, opt) {
   const ev = P.timeline.events.filter((x) => x.s).sort((a, b) => ym2num(a.s) - ym2num(b.s));
   if (ev.length) L.push("[연대기] " + ev.map((x) => fmtYM(x.s) + (x.e ? "~" + fmtYM(x.e) : "") + " " + x.label + (x.est ? "(추정)" : "")).join(", "));
   const led = ledgerLines(P, opt.cats, opt.facts ? Math.ceil(opt.facts / 3) : 20);
-  if (led) L.push("[원장: 직접 기록하거나 대화에서 알게 된 사실]\n" + led);
+  if (led) L.push("[Records: 직접 기록하거나 대화에서 알게 된 사실]\n" + led);
   if (opt.log) {
     const recs = S.LOG.items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, opt.log);
     if (recs.length) L.push("[최근 기록]\n" + recs.map((r) => "- " + (RT_BY[r.type]?.name || r.type) + " " + fmtYM(r.date) + ": " + cut(r.text, 130)).join("\n"));
@@ -1556,7 +1556,7 @@ function chapterFocus(P, id) {
 }
 async function aiChapterInsight(id) {
   const P = S.P; const ch = CH_BY[id];
-  const prompt = "당신은 자기 이해 도구 'Atlas(나의 지도책)'의 해석가입니다. 사용자가 방금 '" + ch.code + " " + ch.name + "(" + ch.frame + ")'를 마쳤습니다.\n" + STYLE_RULES +
+  const prompt = "당신은 자기 이해 도구 'Atlas'의 해석가입니다. 사용자가 방금 '" + ch.code + " " + ch.name + "(" + ch.frame + ")'를 마쳤습니다.\n" + STYLE_RULES +
     "\n\n[이번 챕터 결과]\n" + chapterFocus(P, id) +
     "\n\n[참고: 프로필 전체 요약]\n" + digest(P) +
     "\n\n이 챕터 결과를 해석해 주세요. 다른 챕터·메모와 연결되거나 어긋나는 지점이 있으면 구체적으로 짚으세요." +
@@ -1569,13 +1569,13 @@ async function aiChapterInsight(id) {
 }
 async function aiPortrait() {
   const P = S.P;
-  const prompt = "당신은 한 사람의 자기 초상을 한 장으로 정리하는 편집자입니다. 아래는 그가 직접 답하고 기록한 프로필 전체입니다.\n" + STYLE_RULES +
+  const prompt = "당신은 한 사람의 자화상을 한 장으로 정리하는 편집자입니다. 아래는 그가 직접 답하고 기록한 프로필 전체입니다.\n" + STYLE_RULES +
     "\n\n" + digest(P, { full: true, facts: 60, log: 12 }) +
     '\n\n다음 JSON 하나로만 답하세요. 모든 항목은 위 근거에서 나와야 합니다.\n{"archetype": "이 사람을 요약하는 이름, 4~10자 (예: 조용한 설계자)", "headline": "한 문장 요약, 45자 이내", "essence": "3~4문장. 성격·가치·에너지·원하는 것이 어떻게 맞물리는지", "strengths": ["강점 3개, 각 25자 이내, 근거 포함"], "shadows": ["주의할 패턴 2개, 각 30자 이내, 비난이 아니라 관찰"], "drives": ["이 사람을 움직이는 것 3개, 짧게"], "tasteDNA": ["취향의 공통분모 3개, 짧게"], "nowFocus": "지금 가장 돌봐야 할 것 한 문장", "question": "지금 스스로에게 던질 질문 한 문장", "gaps": "근거가 부족해 확신하기 어려운 부분 한 문장"}';
   const r = await aiJSON(prompt, { modelTier: "complex" });
   if (!r || !r.archetype) throw { code: "invalid_json" };
   S.AI.portrait = Object.assign(r, { at: nowISO(), rev: (P.rev || 0) + 1 });
-  bumpRev("자기 초상 갱신");
+  bumpRev("자화상 갱신");
   markDirty("ai", "profile");
   return S.AI.portrait;
 }
@@ -1591,7 +1591,7 @@ async function aiMap(nodes) {
   const links = r.links.filter((l) => ids.has(l.a) && ids.has(l.b) && l.a !== l.b).slice(0, 30);
   const themes = (r.themes || []).map((t) => ({ name: String(t.name || ""), desc: String(t.desc || ""), members: (t.members || []).filter((m) => ids.has(m)) })).filter((t) => t.name && t.members.length).slice(0, 6);
   S.AI.map = { links, themes, at: nowISO(), rev: (P.rev || 0) + 1 };
-  bumpRev("관계 지도 해석");
+  bumpRev("Network 해석");
   markDirty("ai", "profile");
   return S.AI.map;
 }
@@ -1616,9 +1616,9 @@ function interviewRules(P, topic) {
     const g = gapList(P).slice(0, 3);
     const ws = wheelStats(P).filter((w) => w.gap != null).sort((a, b) => b.gap - a.gap).slice(0, 2);
     const ec = emptyCats(P).slice(0, 4);
-    focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ec.length ? ". 원장에서 아직 빈 분류: " + ec.map((c) => c.name).join(", ") : "") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
+    focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ec.length ? ". Records에서 아직 빈 분류: " + ec.map((c) => c.name).join(", ") : "") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
   } else focus = "사용자가 고른 주제: " + (TOPICS.find((t) => t[0] === topic) || [0, "자유"])[1] + ". 이 분류에서 아직 비어 있거나 오래된 것을 우선.";
-  return "당신은 자기 이해 도구 'Atlas(나의 지도책)'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
+  return "당신은 자기 이해 도구 'Atlas'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
     "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 건강·의료, 재정·보험 같은 민감한 정보도 기록 대상이다. 필요하면 구체적인 수치와 날짜까지 묻되, 사용자가 원하지 않으면 바로 넘어간다.\n- 진단하거나 성격을 단정하지 않는다.\n" +
     "[이번 인터뷰 초점] " + focus + "\n\n[프로필 요약]\n" + digest(P, S.aiLite ? { facts: 20 } : { facts: 50, log: 6 });
 }
@@ -1798,7 +1798,7 @@ function coverageSVG(P) {
   });
   const pct = overall(P);
   g += '<text x="' + c0 + '" y="' + (c0 + 6) + '" text-anchor="middle" class="cov-n">' + pct + '</text><text x="' + c0 + '" y="' + (c0 + 24) + '" text-anchor="middle" class="cov-u">% 완성</text>';
-  return '<svg viewBox="-40 -14 ' + (W + 80) + " " + (W + 28) + '" width="100%" style="max-width:380px;display:block;margin:0 auto" role="img" aria-label="원장 분류별 기록량과 지도 완성도 ' + pct + '%">' + g + "</svg>";
+  return '<svg viewBox="-40 -14 ' + (W + 80) + " " + (W + 28) + '" width="100%" style="max-width:380px;display:block;margin:0 auto" role="img" aria-label="Records 분류별 기록량과 완성도 ' + pct + '%">' + g + "</svg>";
 }
 
 function nudgeCard() {
@@ -1820,7 +1820,7 @@ function viewHome() {
   let banners = "";
   if (S.mode === "local") banners += '<div class="banner" style="margin-bottom:14px"><b>이 브라우저에만 저장돼요</b><span>claude.ai 밖에서 열려 Claude 저장소에 연결되지 않았어요. 다른 기기에서는 보이지 않아요.</span></div>';
   else if (S.mode !== "cloud") banners += '<div class="banner" style="margin-bottom:14px"><b>저장되지 않아요</b><span>이 화면에서는 저장소에 연결되지 않았어요. 연결 상태를 확인해 주세요.</span></div>';
-  if (P.meta.migration && !P.meta.migration.reviewed) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>새 구조로 옮겼어요.</b> 예전에 알게 된 사실 ' + P.meta.migration.facts + "개를 원장으로, 마음속 주제를 생각 나무(" + P.meta.migration.nodes + '개 가지·주제)로 옮겼어요. 분류가 맞는지 한 번 확인해 주세요.</span><button class="btn sm primary" data-act="go" data-view="review">확인하기</button></div>';
+  if (P.meta.migration && !P.meta.migration.reviewed) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>새 구조로 옮겼어요.</b> 예전에 알게 된 사실 ' + P.meta.migration.facts + "개를 Records로, 마음속 주제를 생각 나무(" + P.meta.migration.nodes + '개 가지·주제)로 옮겼어요. 분류가 맞는지 한 번 확인해 주세요.</span><button class="btn sm primary" data-act="go" data-view="review">확인하기</button></div>';
   const tm = P.meta.treeMove;
   if (tm && !tm.reviewed && !(P.meta.migration && !P.meta.migration.reviewed)) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>생각 나무를 표준 가지로 정리했어요.</b> 주제 ' + tm.moves.length + '개를 라이프 휠 여덟 영역과 "의미·나 자신" 아래로 옮겼어요. 주제·메모·연관어는 그대로예요.</span><button class="btn sm primary" data-act="go" data-view="review">확인하기</button></div>';
   if (S.firstRun && S.seeded && !P.dismissSeedNote) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>기존 기록으로 미리 채워 두었어요.</b> 좋아하는 것 ' + allLoveItems(P).length + "개, 생각 나무 " + P.tree.nodes.length + "개, 원하는 것 " + P.wants.items.length + "개, 기록 " + S.LOG.items.length + '건을 옮겼어요. 추정한 연도에는 <span class="tag est">추정</span> 표시가 있어요.</span><button class="btn sm ghost" data-act="dismissSeed">닫기</button></div>';
@@ -1830,28 +1830,28 @@ function viewHome() {
   const chRows = CH.map((c) => { const st = chState(P, c.id), p = P.done[c.id] ? 100 : chProgress(P, c.id);
     return '<button class="chrow ' + st + '" data-act="openCh" data-id="' + c.id + '"><span class="mono">' + c.code + '</span><span class="nm">' + esc(c.name) + '</span><span class="bar"><i style="width:' + p + '%"></i></span><span class="mono v">' + (st === "done" ? "완료" : p + "%") + "</span></button>"; }).join("");
 
-  return '<div class="page-head"><div><div class="eyebrow">Atlas · 나의 지도책</div><h1>' + esc(name) + '의 지도책</h1><p class="lede">나에 대한 모든 것을 분류해 쌓고, 필요할 때 용도별로 꺼내 쓰는 곳. 채울수록 AI가 나를 더 정확히 도와요.</p></div>' +
-    titleBlock([["판", revStr()], ["고친 날", fmtDot(P.updatedAt)], ["원장", P.ledger.length + "항목"], ["탐구", doneN + "/9장"]]) + "</div>" +
+  return '<div class="page-head"><div><div class="eyebrow">Atlas</div><h1>' + esc(name) + '</h1><p class="lede">나에 대한 모든 것을 분류해 쌓고, 필요할 때 용도별로 꺼내 쓰는 곳. 채울수록 AI가 나를 더 정확히 도와요.</p></div>' +
+    titleBlock([["판", revStr()], ["고친 날", fmtDot(P.updatedAt)], ["Records", P.ledger.length + "항목"], ["탐구", doneN + "/9장"]]) + "</div>" +
     banners +
-    '<section class="hero sheet"><div class="hero-l">' + coverageSVG(P) + '<p class="muted" style="font-size:12px;text-align:center">둘레 칸은 원장 분류, 칠해진 깊이는 기록한 양이에요.</p></div>' +
+    '<section class="hero sheet"><div class="hero-l">' + coverageSVG(P) + '<p class="muted" style="font-size:12px;text-align:center">둘레 칸은 Records 분류, 칠해진 깊이는 기록한 양이에요.</p></div>' +
       '<div class="hero-r"><div class="next-card"><div><div class="eyebrow" style="color:var(--accent)">다음에 할 일</div><div class="t">' + esc(na.label) + '</div><div class="d">' + esc(na.desc) + '</div></div><button class="btn accent" data-act="' + (na.kind === "ch" ? "openCh" : "go") + '" data-id="' + (na.ch ? na.ch.id : "") + '" data-view="' + na.kind + '">' + (na.kind === "ch" ? "열기" : "이동") + I.arrow + "</button></div>" +
       (pr ? '<div class="arche-box"><div class="eyebrow">지금의 초상 · ' + ((pr.rev || 0)) + '판</div><div class="archetype">' + esc(pr.archetype) + '</div><div class="archetype-sub">' + esc(pr.headline || "") + "</div></div>" : "") +
-      '<div class="quick"><button class="btn" data-act="go" data-view="ledger">' + I.ledger + '원장에 적기</button><button class="btn" data-act="go" data-view="log">' + I.log + '기록 남기기</button><button class="btn" data-act="go" data-view="export">' + I.pack + "팩 꺼내기</button></div>" +
-      (stale ? '<p class="stale-note">1년 넘게 확인하지 않은 항목이 <b>' + stale + '개</b> 있어요. <button class="link" data-act="go" data-view="ledger">원장에서 확인</button></p>' : "") +
+      '<div class="quick"><button class="btn" data-act="go" data-view="ledger">' + I.ledger + 'Records에 적기</button><button class="btn" data-act="go" data-view="log">' + I.log + '기록 남기기</button><button class="btn" data-act="go" data-view="export">' + I.pack + "Pack 꺼내기</button></div>" +
+      (stale ? '<p class="stale-note">1년 넘게 확인하지 않은 항목이 <b>' + stale + '개</b> 있어요. <button class="link" data-act="go" data-view="ledger">Records에서 확인</button></p>' : "") +
     "</div></section>" +
     nudgeCard() +
-    '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">원장</h2><a href="#ledger" data-go="ledger" style="font-size:12.5px">전체 보기</a></div>' +
+    '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">Records</h2><a href="#ledger" data-go="ledger" style="font-size:12.5px">전체 보기</a></div>' +
     '<div class="cat-grid">' + LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => { const t = countText(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
       return '<button class="cat-card' + (t ? "" : " empty") + '" data-act="ledOpen" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span class="d">' + esc(c.d) + '</span><span class="n">' + (t ? esc(t) : "비어 있음") + (st ? ' · <i class="stale-dot"></i>확인 ' + st : "") + "</span></button>"; }).join("") + "</div>" +
     '<div class="grid2" style="margin-top:28px"><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>탐구</h3><span class="muted" style="font-size:12px">고르기 위주의 9개 장</span></div><div class="chrows">' + chRows + "</div></section>" +
     '<section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>최근에 알게 된 것</h3><a href="#interview" data-go="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
       (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:72px;justify-content:center">' + esc(CAT_BY[f.cat].name) + '</span><span style="flex:1">' + esc(entryText(f)) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') + "</ul></section></div>" +
-    '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">지도</h2><span class="muted" style="font-size:12px">쌓인 기록으로 자동으로 그려져요</span></div>' +
+    '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">한눈에 보기</h2><span class="muted" style="font-size:12px">쌓인 기록으로 자동으로 그려져요</span></div>' +
     '<div class="dwg-cards">' +
-      dwgCard("portrait", "I", "자기 초상", pr ? (pr.rev || 0) + "판" : "미작성", miniPortrait(P)) +
-      dwgCard("map", "II", "관계 지도", S.AI.map ? "주제 " + S.AI.map.themes.length : "노드 " + mapNodeCount(P), miniMap(P)) +
-      dwgCard("gantt", "III", "인생 연표", P.timeline.events.length + "개 이정표", miniGantt(P)) +
-      dwgCard("metrics", "IV", "지표", "휠·성격·가치", miniRadar(P)) +
+      dwgCard("portrait", "Portrait", "자화상", pr ? (pr.rev || 0) + "판" : "미작성", miniPortrait(P)) +
+      dwgCard("map", "Network", "Network", S.AI.map ? "주제 " + S.AI.map.themes.length : "노드 " + mapNodeCount(P), miniMap(P)) +
+      dwgCard("gantt", "Timeline", "연표", P.timeline.events.length + "개 이정표", miniGantt(P)) +
+      dwgCard("metrics", "Metrics", "지표", "휠·성격·가치", miniRadar(P)) +
     "</div>" +
     '<section class="sheet pad" style="margin-top:28px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>최근 기록</h3><a href="#log" data-go="log" style="font-size:12.5px">전체 보기</a></div><ul class="list-plain">' +
       (recent.length ? recent.map((r) => '<li><span class="ltype" style="min-width:52px"><i class="dot" style="background:' + (RT_BY[r.type]?.color || "var(--ink-3)") + '"></i>' + esc(RT_BY[r.type]?.name || "") + '</span><span style="flex:1">' + esc(cut(r.text, 90)) + '</span><span class="mono muted" style="font-size:11px">' + esc(fmtYM(r.date)) + "</span></li>").join("") : '<li class="muted">아직 기록이 없어요.</li>') + "</ul></section>" +
@@ -1876,20 +1876,20 @@ function viewReview() {
   const rows = P.ledger.map((e, i) => ({ e, i })).filter((o) => o.e.mig);
   const byCat = LEDGER_CATS.map((c) => ({ c, xs: rows.filter((o) => o.e.cat === c.id) })).filter((x) => x.xs.length);
   return '<div class="page-head"><div><div class="eyebrow">Review · 옮긴 내용 확인</div><h1>옮긴 내용 확인</h1><p class="lede">자동으로 분류해 옮긴 항목이에요. 분류가 틀린 것은 바꾸고, 필요 없는 것은 지워 주세요. 예전 데이터는 따로 보관돼 있어요.</p></div></div>' +
-    (rows.length ? '<section class="sheet pad" style="margin-bottom:18px"><div class="eyebrow">원장</div><div class="big-n">' + rows.length + '<small>항목</small></div><p class="muted" style="font-size:12.5px">' + byCat.map((x) => x.c.name + " " + x.xs.length).join(" · ") + "</p></section>" : "") +
-    (rows.length ? '<h2 class="sec-h" style="margin:8px 0 6px">원장</h2>' : "") + byCat.map(({ c, xs }) => '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + xs.length + "개</span></header>" + xs.map(({ e, i }) =>
+    (rows.length ? '<section class="sheet pad" style="margin-bottom:18px"><div class="eyebrow">Records</div><div class="big-n">' + rows.length + '<small>항목</small></div><p class="muted" style="font-size:12.5px">' + byCat.map((x) => x.c.name + " " + x.xs.length).join(" · ") + "</p></section>" : "") +
+    (rows.length ? '<h2 class="sec-h" style="margin:8px 0 6px">Records</h2>' : "") + byCat.map(({ c, xs }) => '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + xs.length + "개</span></header>" + xs.map(({ e, i }) =>
       '<div class="rv-row"><select class="input" data-bind="P.ledger.' + i + '.cat" data-rerender="1" aria-label="분류">' + LEDGER_CATS.map((x) => '<option value="' + x.id + '"' + (x.id === e.cat ? " selected" : "") + ">" + x.name + "</option>").join("") + '</select><span class="rv-t">' + esc(e.value) + '<span class="src">' + esc(srcLabel(e.src)) + '</span></span><button class="btn sm ghost" data-act="entryDel" data-id="' + e.id + '" aria-label="지우기">' + I.trash + "</button></div>").join("") + "</section>").join("") +
     treeMoveSection(P) +
     '<div class="row" style="justify-content:flex-end;margin-top:18px">' + ((!m || m.reviewed) && (!P.meta.treeMove || P.meta.treeMove.reviewed) ? '<span class="muted">확인을 마쳤어요.</span>' : '<button class="btn primary" data-act="reviewDone">모두 확인했어요</button>') + "</div>";
 }
 function kpi(l, v, d) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(d) + "</div></div>"; }
 function dwgCard(view, no, name, meta, preview) {
-  return '<a href="#' + view + '" class="sheet dwg-card" data-act="go" data-view="' + view + '"><div class="pv">' + preview + '</div><div class="meta"><div><div class="mono muted" style="font-size:10.5px">도판 ' + no + "</div><b>" + esc(name) + '</b></div><span class="tag">' + esc(meta) + "</span></div></a>";
+  return '<a href="#' + view + '" class="sheet dwg-card" data-act="go" data-view="' + view + '"><div class="pv">' + preview + '</div><div class="meta"><div>' + (no !== name ? '<div class="mono muted" style="font-size:10.5px">' + no + "</div>" : "") + '<b>" + esc(name) + '</b></div><span class="tag">' + esc(meta) + "</span></div></a>";
 }
 function miniPortrait(P) {
   const pr = S.AI.portrait;
   if (!pr) return placeholderSVG("초상 미작성");
-  return '<div style="padding:14px 18px;text-align:left;width:100%"><div class="mono muted" style="font-size:9.5px;letter-spacing:.14em">' + '자기 초상' + '</div><div style="font-family:var(--f-serif);font-size:22px;font-weight:700;line-height:1.25;margin:6px 0">' + esc(pr.archetype) + '</div><div style="font-size:11.5px;color:var(--ink-2);line-height:1.5">' + esc(cut(pr.headline, 60)) + "</div></div>";
+  return '<div style="padding:14px 18px;text-align:left;width:100%"><div class="mono muted" style="font-size:9.5px;letter-spacing:.14em">' + '자화상' + '</div><div style="font-family:var(--f-serif);font-size:22px;font-weight:700;line-height:1.25;margin:6px 0">' + esc(pr.archetype) + '</div><div style="font-size:11.5px;color:var(--ink-2);line-height:1.5">' + esc(cut(pr.headline, 60)) + "</div></div>";
 }
 function miniMap(P) {
   const counts = { values: valueScores(P).filter((v) => v.n).length ? 5 : 0, loves: allLoveItems(P).length, energy: energyLists(P).c.length, thoughts: P.tree.nodes.length, wants: P.wants.items.length, life: 4, traits: ipipScores(P).O.n ? 5 : 0 };
@@ -1979,7 +1979,7 @@ function viewJourney() {
   foot += "</div>";
   const needHint = !onResult && cur && !canNext ? '<p class="muted" style="font-size:12px;text-align:right;margin-top:8px">모든 문항에 답하면 다음으로 넘어갈 수 있어요.</p>' : "";
 
-  return '<div class="page-head"><div><div class="eyebrow">Explore · 탐구</div><h1>탐구</h1><p class="lede">아홉 개의 장을 지나며 나라는 지도의 윤곽을 그립니다. 대부분 고르기만 하면 돼요. 순서를 건너뛰어도 괜찮아요. 모든 답은 바로 저장돼요.</p></div></div>' +
+  return '<div class="page-head"><div><div class="eyebrow">Explore · 탐구</div><h1>탐구</h1><p class="lede">아홉 개의 장을 지나며 나의 윤곽을 그립니다. 대부분 고르기만 하면 돼요. 순서를 건너뛰어도 괜찮아요. 모든 답은 바로 저장돼요.</p></div></div>' +
     '<div class="jr">' + idx + '<section class="sheet lift" id="chSheet">' + head + body + foot + "</section></div>" + needHint;
 }
 
@@ -2184,7 +2184,7 @@ function chapterResult(id) {
       break;
     }
     case "timeline": {
-      h = '<div class="stack">' + ganttSVG(P, { compact: true }) + '<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">전체 연표는 지도 III에서 확대하고 편집할 수 있어요.</span><button class="btn" data-act="go" data-view="gantt">인생 연표 열기' + I.arrow + "</button></div>" + insightBox("timeline") + "</div>";
+      h = '<div class="stack">' + ganttSVG(P, { compact: true }) + '<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">전체 연표는 연표 화면에서 확대하고 편집할 수 있어요.</span><button class="btn" data-act="go" data-view="gantt">연표 열기' + I.arrow + "</button></div>" + insightBox("timeline") + "</div>";
       break;
     }
   }
@@ -2328,7 +2328,7 @@ function viewInterview() {
     '<section class="sheet side-card"><h4>가장 비어 있는 곳</h4>' + gaps.map((g) => '<div class="gap-row"><span>' + esc(g.name) + '</span><span class="b"><i style="width:' + g.p + "%;background:" + (g.p < 30 ? "var(--signal)" : "var(--accent)") + '"></i></span><span class="v">' + g.p + "%</span></div>").join("") + "</section>" +
     '<section class="sheet side-card"><h4>인터뷰로 알게 된 것 <span class="mono muted" style="font-size:11px">' + sessionFacts.length + '</span></h4><ul class="list-plain">' + (sessionFacts.slice(-6).reverse().map((f) => '<li style="padding:7px 0;font-size:12.5px"><span class="tag">' + esc(CAT_BY[f.cat].name) + "</span><span>" + esc(entryText(f)) + "</span></li>").join("") || '<li class="muted" style="font-size:12.5px">아직 없어요.</li>') + "</ul></section></aside>";
 
-  return '<div class="page-head"><div><div class="eyebrow">Interview · 대화</div><h1>AI 인터뷰</h1><p class="lede">탐구가 윤곽을 그린다면 인터뷰는 세부를 채웁니다. 비어 있거나 어긋나 보이는 곳부터 하나씩 묻고, 답에서 드러난 사실은 원장에 들어가요.</p></div></div><div class="iv">' + chat + side + "</div>";
+  return '<div class="page-head"><div><div class="eyebrow">Interview · 대화</div><h1>AI 인터뷰</h1><p class="lede">탐구가 윤곽을 그린다면 인터뷰는 세부를 채웁니다. 비어 있거나 어긋나 보이는 곳부터 하나씩 묻고, 답에서 드러난 사실은 Records에 들어가요.</p></div></div><div class="iv">' + chat + side + "</div>";
 }
 function fmtTime(iso) { if (!iso) return ""; const d = new Date(iso); return d.getMonth() + 1 + "/" + d.getDate() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
 function afterInterview() {
@@ -2366,7 +2366,7 @@ async function ivRun(opening) {
   ivBusy(false); render();
 }
 
-/* ============================================================ LEDGER · 원장 */
+/* ============================================================ LEDGER · Records */
 const STALE_DAYS = 365;
 function addEntry(f) {
   const now = nowISO();
@@ -2403,16 +2403,16 @@ function catLinked(P, c) {
     case "taste": return '<p class="linked-sum">좋아하는 것 ' + allLoveItems(P).length + "개 · " + LOVE_CATS.filter((x) => (P.loves.cats[x.id]?.items || []).length).map((x) => x.name).join(", ") + "</p>" + link("취향 탐구 열기", "openCh", 'data-id="loves"');
     case "thoughts": return '<p class="linked-sum">가지 ' + treeChildren(P, null).length + "개 · 주제 " + P.tree.nodes.filter((x) => x.parent && x.kind !== "word").length + "개</p>" + link("생각 나무 열기", "go", 'data-view="tree"');
     case "goals": return '<p class="linked-sum">원하는 것 ' + P.wants.items.length + "개 · 진행 중 " + P.wants.items.filter((w) => w.status === "doing").length + "</p>" + link("원하는 것 열기", "openCh", 'data-id="wants"');
-    case "history": return '<p class="linked-sum">이정표 ' + P.timeline.events.length + "개 · 추정 " + P.timeline.events.filter((e) => e.est).length + "</p>" + link("인생 연표 열기", "go", 'data-view="gantt"');
+    case "history": return '<p class="linked-sum">이정표 ' + P.timeline.events.length + "개 · 추정 " + P.timeline.events.filter((e) => e.est).length + "</p>" + link("연표 열기", "go", 'data-view="gantt"');
   }
   return "";
 }
 function viewLedger() {
   const P = S.P, cur = S.ui.ledCat;
   const staleAll = P.ledger.filter(isStale).length;
-  const idx = '<nav class="led-index" aria-label="원장 분류"><button class="led-cat ' + (!cur ? "on" : "") + '" data-act="ledCat" data-id=""><span>전체</span><span class="n">' + P.ledger.length + "</span></button>" +
+  const idx = '<nav class="led-index" aria-label="Records 분류"><button class="led-cat ' + (!cur ? "on" : "") + '" data-act="ledCat" data-id=""><span>전체</span><span class="n">' + P.ledger.length + "</span></button>" +
     LEDGER_CATS.map((c) => { const k = catCounts(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
-      return '<button class="led-cat ' + (cur === c.id ? "on" : "") + (k.own || k.linked ? "" : " empty") + '" data-act="ledCat" data-id="' + c.id + '"' + (k.linked ? ' title="원장 기록 ' + k.own + "개, " + k.label + " " + k.linked + '개"' : "") + '><span>' + c.name + '</span><span class="n">' + (st ? '<i class="stale-dot" title="확인 필요 ' + st + '"></i>' : "") + k.own + (k.linked ? '<small class="lk">+' + k.linked + "</small>" : "") + "</span></button>"; }).join("") +
+      return '<button class="led-cat ' + (cur === c.id ? "on" : "") + (k.own || k.linked ? "" : " empty") + '" data-act="ledCat" data-id="' + c.id + '"' + (k.linked ? ' title="Records 기록 ' + k.own + "개, " + k.label + " " + k.linked + '개"' : "") + '><span>' + c.name + '</span><span class="n">' + (st ? '<i class="stale-dot" title="확인 필요 ' + st + '"></i>' : "") + k.own + (k.linked ? '<small class="lk">+' + k.linked + "</small>" : "") + "</span></button>"; }).join("") +
     '<p class="led-note">+ 숫자는 연결된 목록(기본 항목, 좋아하는 것, 생각 나무, 원하는 것, 이정표)의 개수예요. 분류를 누르면 위쪽에서 바로 열 수 있어요.</p></nav>';
   const cats = cur ? [CAT_BY[cur]] : LEDGER_CATS.filter((c) => P.ledger.some((e) => e.cat === c.id));
   let body = "";
@@ -2426,9 +2426,9 @@ function viewLedger() {
         : cur ? '<p class="empty">아직 기록이 없어요. 아래에서 추가해 보세요.</p>' : "") +
       (cur ? entryAdder(c) : "") + "</section>";
   });
-  if (!cats.length) body = '<p class="empty">원장이 비어 있어요. 왼쪽에서 분류를 골라 첫 기록을 남겨 보세요.</p>';
-  return '<div class="page-head"><div><div class="eyebrow">Ledger · 원장</div><h1>나에 대한 모든 기록</h1><p class="lede">분류별로 사실을 쌓는 곳이에요. 직접 적은 것, 인터뷰와 기록에서 뽑은 것이 모두 여기에 모여요. 1년 넘게 손대지 않은 항목에는 확인 표시가 붙어요.</p></div>' +
-    '<input class="input" id="ledQ" placeholder="원장 검색" value="' + esc(S.ui.ledQ || "") + '" style="max-width:240px"></div>' +
+  if (!cats.length) body = '<p class="empty">Records가 비어 있어요. 왼쪽에서 분류를 골라 첫 기록을 남겨 보세요.</p>';
+  return '<div class="page-head"><div><div class="eyebrow">Records · raw data</div><h1>나에 대한 모든 기록</h1><p class="lede">분류별로 사실을 쌓는 곳이에요. 직접 적은 것, 인터뷰와 기록에서 뽑은 것이 모두 여기에 모여요. 1년 넘게 손대지 않은 항목에는 확인 표시가 붙어요.</p></div>' +
+    '<input class="input" id="ledQ" placeholder="Records 검색" value="' + esc(S.ui.ledQ || "") + '" style="max-width:240px"></div>' +
     (staleAll ? '<div class="banner" style="margin-bottom:14px"><span>1년 넘게 확인하지 않은 항목이 <b>' + staleAll + "개</b> 있어요. 항목 옆의 <b>아직 맞아요</b>를 누르거나 고쳐 주세요.</span></div>" : "") +
     '<div class="led">' + idx + '<div class="led-body" id="ledBody">' + body + "</div></div>";
 }
@@ -2498,14 +2498,14 @@ function applyLogSearch() {
 }
 
 /* ============================================================ MAPS common + I PORTRAIT */
-const DWGS = [["portrait", "I", "자기 초상"], ["map", "II", "관계 지도"], ["gantt", "III", "인생 연표"], ["metrics", "IV", "지표"]];
+const DWGS = [["portrait", "Portrait", "자화상"], ["map", "Network", "Network"], ["gantt", "Timeline", "연표"], ["metrics", "Metrics", "지표"]];
 function drawingHead(active, lede) {
   const d = DWGS.find((x) => x[0] === active);
-  return '<div class="page-head"><div><div class="eyebrow">Plate ' + d[1] + " · 지도" + "</div><h1>" + d[2] + '</h1><p class="lede">' + lede + "</p></div></div>" +
-    '<nav class="dwg-tabs" aria-label="지도">' + DWGS.map(([v, no, n]) => '<a href="#' + v + '" class="' + (v === active ? "on" : "") + '" data-act="go" data-view="' + v + '"><span class="mono">' + no + "</span>" + n + "</a>").join("") + "</nav>";
+  return '<div class="page-head"><div><div class="eyebrow">' + d[1] + "</div><h1>" + d[2] + '</h1><p class="lede">' + lede + "</p></div></div>" +
+    '<nav class="dwg-tabs" aria-label="한눈에 보기">' + DWGS.map(([v, no, n]) => '<a href="#' + v + '" class="' + (v === active ? "on" : "") + '" data-act="go" data-view="' + v + '">' + n + "</a>").join("") + "</nav>";
 }
 function drawingFoot(no, title, rev, date, drawn) {
-  return '<div class="dwg-foot">' + titleBlock([["도판", no], ["제목", esc(title)], ["판", rev], ["날짜", date], ["작성", esc(drawn)]]) + "</div>";
+  return '<div class="dwg-foot">' + titleBlock([["제목", esc(title)], ["판", rev], ["날짜", date], ["작성", esc(drawn)]]) + "</div>";
 }
 function sinceCount(iso) {
   if (!iso) return 0; const t = String(iso);
@@ -2526,7 +2526,7 @@ function viewPortrait() {
   else bar += '<span class="muted" style="font-size:12.5px">' + esc(S.aiOff ? aiErrMsg({ code: S.aiOff }) : "Claude 연결이 있는 화면에서 초상을 그릴 수 있어요.") + "</span>";
   const since = pr ? sinceCount(pr.at) : 0;
   if (pr && since) bar += '<span class="tag est">초상 이후 새로 쌓인 기록·사실 ' + since + "개</span>";
-  bar += '<span class="muted" style="font-size:12px;margin-left:auto">지도 완성도 ' + pct + "% · 채울수록 정확해져요</span></div>";
+  bar += '<span class="muted" style="font-size:12px;margin-left:auto">완성도 ' + pct + "% · 채울수록 정확해져요</span></div>";
 
   const headName = '<div class="pt-name">' + esc(b.name || "이름 없음") + (b.birthYear ? " · " + b.birthYear : "") + (b.region ? " · " + esc(b.region) : "") + (b.job ? " · " + esc(b.job) : "") + "</div>";
   const head = pr ? '<div class="pt-head">' + headName + '<div class="pt-arche">' + esc(pr.archetype) + '</div><div class="pt-line">' + esc(pr.headline || "") + "</div></div>"
@@ -2562,7 +2562,7 @@ function viewPortrait() {
 
   return drawingHead("portrait", "한 사람을 한 장으로. 응답과 기록 전체를 Claude가 읽고 이름과 문장을 붙입니다. 아래의 수치와 목록은 당신의 응답에서 바로 계산돼요.") + bar +
     '<article class="drawing"><div class="pt">' + head + '<div class="stack" style="gap:22px">' + left + '</div><div class="stack" style="gap:22px">' + right + "</div></div>" +
-    drawingFoot("I", "자기 초상", pr ? (pr.rev || 0) + "판" : "—", pr ? fmtDot(pr.at) : fmtDot(nowISO()), pr ? "Claude" : "자동 계산") + "</article>";
+    drawingFoot("I", "자화상", pr ? (pr.rev || 0) + "판" : "—", pr ? fmtDot(pr.at) : fmtDot(nowISO()), pr ? "Claude" : "자동 계산") + "</article>";
 }
 
 /* ============================================================ II RELATION MAP */
@@ -2632,20 +2632,20 @@ function viewMap() {
   let bar = '<div class="dwg-bar"><div class="map-legend">' + DOMAINS.map((d) => { const n = g.nodes.filter((x) => x.dom === d.id && x.kind === "leaf").length; return '<button class="chip ' + (S.ui.mapHide[d.id] ? "" : "on") + '" data-act="mapToggle" data-v="' + d.id + '" style="' + (S.ui.mapHide[d.id] ? "" : "border-color:" + d.color + ";color:var(--ink);background:var(--sheet)") + '"><i class="dot" style="background:' + d.color + '"></i>' + d.name + " " + n + "</button>"; }).join("") + "</div>";
   bar += '<span style="margin-left:auto" class="row">';
   if (busy) bar += '<span class="typing"><span class="spinner"></span>Claude가 숨은 연결을 찾는 중이에요. 1분 정도 걸려요.</span>';
-  else if (aiAvailable()) bar += '<button class="btn ' + (ai ? "" : "accent") + '" data-act="drawMap">' + I.spark + (ai ? "다시 해석" : "지도 해석하기") + "</button>";
+  else if (aiAvailable()) bar += '<button class="btn ' + (ai ? "" : "accent") + '" data-act="drawMap">' + I.spark + (ai ? "다시 해석" : "Network 해석하기") + "</button>";
   bar += "</span></div>";
   const themes = ai && ai.themes.length ? '<div class="row" style="justify-content:space-between;margin:20px 0 10px"><h3 style="font-size:15px">Claude가 찾은 주제</h3><span class="mono muted" style="font-size:11px">' + fmtDot(ai.at) + " · " + (ai.rev || 0) + "판" + '</span></div><div class="themes">' + ai.themes.map((t, i) => '<button class="theme" style="text-align:left" data-act="mapSel" data-id="theme_' + i + '"><b>' + esc(t.name) + "</b><p>" + esc(t.desc) + '</p><span class="mono muted" style="font-size:10.5px">' + t.members.length + "개 노드</span></button>").join("") + "</div>" :
-    '<p class="muted" style="margin-top:14px;font-size:13px">' + (aiAvailable() ? '"지도 해석하기"를 누르면 서로 다른 영역 사이의 숨은 연결과 3~5개의 주제를 찾아 지도 위에 겹쳐 그려요.' : "지금은 영역별 연결만 보여요. Claude 연결이 있는 화면에서 숨은 연결을 찾을 수 있어요.") + "</p>";
+    '<p class="muted" style="margin-top:14px;font-size:13px">' + (aiAvailable() ? '"Network 해석하기"를 누르면 서로 다른 영역 사이의 숨은 연결과 3~5개의 주제를 찾아 지도 위에 겹쳐 그려요.' : "지금은 영역별 연결만 보여요. Claude 연결이 있는 화면에서 숨은 연결을 찾을 수 있어요.") + "</p>";
   const tbl = '<details class="tbl"><summary>표로 보기 (노드 ' + g.nodes.length + " · 연결 " + g.links.length + ')</summary><table><thead><tr><th>영역</th><th>노드</th><th>설명</th></tr></thead><tbody>' + g.nodes.filter((n) => n.kind === "leaf").map((n) => "<tr><td>" + esc(DOM_BY[n.dom].name) + "</td><td>" + esc(n.label) + "</td><td>" + esc(cut(n.detail, 80)) + "</td></tr>").join("") + "</tbody></table>" +
     (ai && ai.links.length ? '<table style="margin-top:10px"><thead><tr><th>연결</th><th>이유</th></tr></thead><tbody>' + ai.links.map((l) => { const a = g.nodes.find((n) => n.id === l.a), c = g.nodes.find((n) => n.id === l.b); return a && c ? "<tr><td>" + esc(a.label) + " ↔ " + esc(c.label) + "</td><td>" + esc(l.why) + "</td></tr>" : ""; }).join("") + "</tbody></table>" : "") + "</details>";
   return drawingHead("map", "성격·가치·에너지·취향·마음속 주제·원하는 것을 하나의 지도에. 노드를 끌거나 눌러 보세요. 가운데의 나에서 가까울수록 자주 연결된 것들이에요.") + bar +
-    '<div class="map-wrap" id="mapWrap"><svg id="mapSvg" aria-label="관계 지도 (노드 ' + leafN + '개)"></svg><div class="map-side" id="mapSide" hidden></div><div id="mapMsg" class="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">지도 엔진을 불러오는 중…</div></div>' + themes + tbl +
-    '<div class="dwg-foot">' + titleBlock([["도판", "II"], ["제목", "관계 지도"], ["판", ai ? (ai.rev || 0) + "판" : "—"], ["노드", String(leafN)], ["숨은 연결", String(ai ? ai.links.length : 0)], ["축척", "FREE"]]) + "</div>";
+    '<div class="map-wrap" id="mapWrap"><svg id="mapSvg" aria-label="Network (노드 ' + leafN + '개)"></svg><div class="map-side" id="mapSide" hidden></div><div id="mapMsg" class="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">지도 엔진을 불러오는 중…</div></div>' + themes + tbl +
+    '<div class="dwg-foot">' + titleBlock([["제목", "Network"], ["판", ai ? (ai.rev || 0) + "판" : "—"], ["노드", String(leafN)], ["숨은 연결", String(ai ? ai.links.length : 0)], ["축척", "FREE"]]) + "</div>";
 }
 
 let mapSim = null;
 function afterMap() {
-  ensureD3().then((d3) => drawMapD3(d3)).catch(() => { const m = $("#mapMsg"); if (m) m.textContent = "지도 엔진(d3)을 불러오지 못했어요. 네트워크를 확인한 뒤 새로고침해 주세요. 아래 표로도 볼 수 있어요."; });
+  ensureD3().then((d3) => drawMapD3(d3)).catch(() => { const m = $("#mapMsg"); if (m) m.textContent = "그래프 엔진(d3)을 불러오지 못했어요. 네트워크를 확인한 뒤 새로고침해 주세요. 아래 표로도 볼 수 있어요."; });
 }
 function drawMapD3(d3) {
   const svgEl = $("#mapSvg"); if (!svgEl) return;
@@ -2821,7 +2821,7 @@ function ganttSVG(P, o) {
     const lw = lab.length * 6.4 + 12;
     g += '<rect x="' + (x - lw / 2) + '" y="' + (HH - 12) + '" width="' + lw + '" height="15" rx="3" ' + st({ fill: "var(--signal)" }) + '/><text x="' + x + '" y="' + (HH - 1.5) + '" text-anchor="middle" ' + st({ fill: "#fff", "font-size": "10px", "font-weight": "600", "font-family": "var(--f-mono)" }) + ">" + esc(lab) + "</text>";
   }
-  return '<div class="gantt-shell"><div class="gantt-scroll"><svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" style="min-width:' + W + 'px;display:block" role="img" aria-label="인생 연표">' + g + "</svg></div></div>";
+  return '<div class="gantt-shell"><div class="gantt-scroll"><svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" style="min-width:' + W + 'px;display:block" role="img" aria-label="연표">' + g + "</svg></div></div>";
 }
 
 function viewGantt() {
@@ -2844,17 +2844,17 @@ function viewGantt() {
     edit + ganttSVG(P) +
     (undated.length ? '<div class="banner" style="margin-top:12px">연도가 없어 표시되지 않은 이정표: ' + undated.map((e) => '<button class="chip" data-act="evEdit" data-id="' + e.id + '">' + esc(e.label) + "</button>").join(" ") + "</div>" : "") +
     '<details class="tbl"><summary>표로 보기</summary><table><thead><tr><th>구분</th><th>항목</th><th>시작</th><th>끝</th><th>상태</th></tr></thead><tbody>' + P.timeline.events.slice().sort((a, b) => (ym2num(a.s) ?? 9999) - (ym2num(b.s) ?? 9999)).map((e) => "<tr><td>" + esc(LANE_BY[e.lane]?.name) + "</td><td>" + esc(e.label) + "</td><td>" + esc(fmtYM(e.s)) + "</td><td>" + esc(e.e ? fmtYM(e.e) : "") + "</td><td>" + (e.est ? "추정" : "확정") + "</td></tr>").join("") + "</tbody></table></details>" +
-    '<div class="dwg-foot">' + titleBlock([["도판", "III"], ["제목", "인생 연표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["항목", String(P.timeline.events.length) + " + " + P.wants.items.filter((w) => wantYear(w)).length], ["축척", ({ all: "1Y=9px", past: "1Y=36px", next: "1Y=36px" })[rng]]]) + "</div>";
+    '<div class="dwg-foot">' + titleBlock([["제목", "연표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["항목", String(P.timeline.events.length) + " + " + P.wants.items.filter((w) => wantYear(w)).length], ["축척", ({ all: "1Y=9px", past: "1Y=36px", next: "1Y=36px" })[rng]]]) + "</div>";
 }
 
-/* ============================================================ EXPORT · 팩과 파일
+/* ============================================================ EXPORT · Pack and files
    Packs are Markdown written for a reader who has never met the owner (a person or an AI).
    Excel sheets mirror the data model one table per sheet, so the same file can be edited and uploaded back. */
 function packText(P, pack) {
   const b = P.basics, L = [];
   const who = b.nick || b.name || "나";
   L.push("# " + who + "에 대한 참고 자료 — " + pack.name);
-  L.push("기준일 " + fmtDot(nowISO()) + " · Atlas(나의 지도책)에서 내보냄");
+  L.push("기준일 " + fmtDot(nowISO()) + " · Atlas에서 내보냄");
   L.push("");
   L.push("> 이 자료는 본인이 직접 정리한 기록입니다. 용도: " + pack.d + ". 이 자료를 바탕으로 답해 주고, 자료에 없는 것은 추측하지 말고 물어봐 주세요. '추정'이 붙은 항목은 확실하지 않은 정보입니다.");
   const part = (k) => pack.parts.includes(k);
@@ -2915,7 +2915,7 @@ const byName = (list, name, key) => { const x = list.find((o) => o[key || "name"
 const pairId = (pairs, label) => { const x = pairs.find((p) => p[1] === label || p[0] === label); return x ? x[0] : null; };
 const yes = (v) => /^(y|yes|o|true|1|예|네|추정|민감)$/i.test(String(v || "").trim());
 const XL_SHEETS = [
-  { name: "원장", key: "ledger",
+  { name: "Records", key: "ledger",
     rows: (P) => P.ledger.map((e) => ({ id: e.id, 분류: CAT_BY[e.cat].name, 세부: e.sub || "", 항목: e.label || "", 내용: e.value || "", 날짜: e.date || "", 민감: e.sens === "sensitive" ? "Y" : "", 추정: e.conf === "est" ? "Y" : "", 출처: srcLabel(e.src), 수정일: String(e.up || "").slice(0, 10) })),
     list: (P) => P.ledger,
     toItem: (r) => { const v = String(r.내용 || "").trim(); if (!v) return null; const cat = byName(LEDGER_CATS, String(r.분류 || "").trim()) || "etc"; return { cat, sub: String(r.세부 || ""), label: String(r.항목 || ""), value: v, date: normYM(r.날짜).ok ? normYM(r.날짜).v : null, sens: yes(r.민감) || SENSITIVE_CATS.has(cat) ? "sensitive" : "normal", conf: yes(r.추정) ? "est" : "sure" }; },
@@ -2979,7 +2979,7 @@ async function buildWorkbook(P) {
   add("기본정보", basicsRows(P).map(({ 항목, 값 }) => ({ 항목, 값 })));
   XL_SHEETS.forEach((sh) => add(sh.name, sh.rows(P)));
   add("응답", answerRows(P));
-  add("안내", [{ 설명: "Atlas(나의 지도책) 원본 데이터입니다. '응답'과 '안내'를 뺀 시트는 고쳐서 다시 올릴 수 있어요. id가 있는 행은 그 항목을 고치고, id가 비어 있는 행은 새로 추가해요. 행을 지워도 앱의 데이터는 지워지지 않아요." }]);
+  add("안내", [{ 설명: "Atlas 원본 데이터입니다. '응답'과 '안내'를 뺀 시트는 고쳐서 다시 올릴 수 있어요. id가 있는 행은 그 항목을 고치고, id가 비어 있는 행은 새로 추가해요. 행을 지워도 앱의 데이터는 지워지지 않아요." }]);
   return X.write(wb, { bookType: "xlsx", type: "array" });
 }
 /* compare an uploaded workbook with the current data; nothing changes until applyImport */
@@ -3029,7 +3029,7 @@ function viewExport() {
   const imp = S.ui.importPlan;
   const packs = '<div class="packs">' + PACKS.map((p) => '<button class="pack ' + (p.id === pack.id ? "on" : "") + '" data-act="packSel" data-id="' + p.id + '"><b>' + esc(p.name) + "</b><span>" + esc(p.d) + "</span></button>").join("") + "</div>";
   const kb = Math.max(1, Math.round(new Blob([text]).size / 1024));
-  const preview = '<section class="sheet pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>' + esc(pack.name) + ' 팩</h3><span class="mono muted" style="font-size:11.5px">' + text.split("\n").length + "줄 · " + kb + "KB</span></div>" +
+  const preview = '<section class="sheet pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>' + esc(pack.name) + ' Pack</h3><span class="mono muted" style="font-size:11.5px">' + text.split("\n").length + "줄 · " + kb + "KB</span></div>" +
     '<p class="muted" style="font-size:12.5px">이 글을 복사해서 ChatGPT, Claude, Gemini 같은 AI 대화의 첫 메시지에 붙여 넣으세요. 그다음 원하는 일을 부탁하면 돼요.</p>' +
     '<textarea class="input mono pack-text" id="packText" rows="14" readonly>' + esc(text) + "</textarea>" +
     '<div class="row"><button class="btn primary" data-act="packCopy">' + I.copy + "복사하기</button><button class=\"btn\" data-act=\"packSave\">" + I.down + ".md 파일로 저장</button></div></section>";
@@ -3040,7 +3040,7 @@ function viewExport() {
     (imp ? importPreview(imp) : "") + "</section>";
   const hist = P.meta.exports.slice(-8).reverse();
   const log = '<section class="sheet pad"><h3 style="margin-bottom:8px">내보낸 기록</h3><ul class="list-plain">' + (hist.length ? hist.map((x) => '<li><span class="mono muted" style="font-size:11.5px;min-width:92px">' + fmtDot(x.at) + " " + fmtTime(x.at).split(" ")[1] + "</span><span>" + esc(({ copy: "복사", md: ".md 저장", json: "JSON 저장", xlsx: "엑셀 저장", import: "엑셀 올리기" })[x.kind] || x.kind) + (x.pack ? " · " + esc(PACK_BY[x.pack]?.name || x.pack) : "") + "</span></li>").join("") : '<li class="muted">아직 내보낸 적이 없어요.</li>') + "</ul></section>";
-  return '<div class="page-head"><div><div class="eyebrow">Packs · 내보내기</div><h1>용도별 팩</h1><p class="lede">필요한 일에 맞는 부분만 골라 다른 사람이나 AI가 바로 읽을 수 있는 글로 만들어요. 건강·재정 정보도 해당 팩에 포함돼요.</p></div></div>' +
+  return '<div class="page-head"><div><div class="eyebrow">Pack · 꺼내 쓰기</div><h1>Pack</h1><p class="lede">필요한 일에 맞는 부분만 골라 다른 사람이나 AI가 바로 읽을 수 있는 글로 만들어요. 건강·재정 정보도 해당 Pack에 포함돼요.</p></div></div>' +
     packs + '<div class="export-grid">' + preview + '<div class="stack">' + files + log + "</div></div>";
 }
 function importPreview(p) {
@@ -3093,9 +3093,9 @@ function viewMetrics() {
 
   return drawingHead("metrics", "숫자로 보는 나. 모든 수치는 탐구의 응답에서 바로 계산돼요. 각 카드 아래의 '표로 보기'에서 원래 값을 확인할 수 있어요.") +
     '<div class="mx">' +
-      '<section class="sheet mcard c3 stat"><div class="l">지도 완성도</div><div class="v" style="font-size:44px">' + pct + '%</div><div class="d">탐구·원장·인터뷰를 합친 진척도</div></section>' +
+      '<section class="sheet mcard c3 stat"><div class="l">완성도</div><div class="v" style="font-size:44px">' + pct + '%</div><div class="d">탐구·Records·인터뷰를 합친 진척도</div></section>' +
       '<section class="sheet mcard c3 stat"><div class="l">완료 챕터</div><div class="v">' + doneN + ' / 9</div><div class="d">진행 중 ' + CH.filter((c) => chState(P, c.id) === "doing").length + "</div></section>" +
-      '<section class="sheet mcard c3 stat"><div class="l">원장 항목</div><div class="v">' + P.ledger.length + '</div><div class="d">인터뷰에서 ' + ivF + " · 기록에서 " + P.ledger.filter((f) => f.src === "record").length + "</div></section>" +
+      '<section class="sheet mcard c3 stat"><div class="l">Records 항목</div><div class="v">' + P.ledger.length + '</div><div class="d">인터뷰에서 ' + ivF + " · 기록에서 " + P.ledger.filter((f) => f.src === "record").length + "</div></section>" +
       '<section class="sheet mcard c3 stat"><div class="l">개정 이력</div><div class="v">' + revStr() + '</div><div class="d">최근 ' + (P.revLog.length ? fmtDot(P.revLog[P.revLog.length - 1].at) : "없음") + "</div></section>" +
       '<section class="sheet mcard c6"><h4>챕터별 진도</h4><div class="sub">계획 100% 대비 실적 · 완료는 초록</div>' + chRows + chTbl + "</section>" +
       '<section class="sheet mcard c6"><h4>라이프 휠 · 만족도와 중요도의 차이</h4><div class="sub">차이가 큰 순서로 정렬</div>' + wheelDumbbell(ws) + '<details class="tbl"><summary>표로 보기</summary><table><thead><tr><th>영역</th><th>만족(0~10)</th><th>중요(1~5)</th><th>우선순위</th></tr></thead><tbody>' + ws.map((w) => "<tr><td>" + w.name + "</td><td>" + (w.sat ?? "–") + "</td><td>" + (w.imp ?? "–") + "</td><td>" + (w.gap ?? "–") + "</td></tr>").join("") + "</tbody></table></details></section>" +
@@ -3105,9 +3105,9 @@ function viewMetrics() {
       '<section class="sheet mcard c6"><h4>원하는 것 · 종류 × 시기</h4><div class="sub">' + W.length + "개 · 진행 중 " + W.filter((w) => w.status === "doing").length + " · 이룸 " + W.filter((w) => w.status === "done").length + "</div>" + hm + "</section>" +
       '<section class="sheet mcard c6"><h4>완성도 추이</h4><div class="sub">하루 한 점, 그날의 마지막 값</div>' + (pl.length >= 2 ? lineSVG(pl, { h: 180 }) : '<div class="empty">이틀 이상 기록되면 추이선이 그려져요. 오늘 ' + pct + "%</div>") + "</section>" +
       '<section class="sheet mcard c6"><h4>기록 · 연도별</h4><div class="sub">기록 ' + S.LOG.items.length + "건</div>" + recBars + "</section>" +
-      '<section class="sheet mcard c6"><h4>개정 이력</h4><div class="sub">챕터 완료, 초상·지도 갱신, 인터뷰 누적 시 올라가요</div><ul class="list-plain">' + (revs.map((r) => '<li><span class="rev-tri">' + pad2(r.rev) + '</span><span style="flex:1">' + esc(r.note) + '</span><span class="mono muted" style="font-size:11px">' + fmtDot(r.at) + "</span></li>").join("") || '<li class="muted">아직 개정 이력이 없어요.</li>') + "</ul></section>" +
+      '<section class="sheet mcard c6"><h4>개정 이력</h4><div class="sub">챕터 완료, 자화상·Network 갱신, 인터뷰 누적 시 올라가요</div><ul class="list-plain">' + (revs.map((r) => '<li><span class="rev-tri">' + pad2(r.rev) + '</span><span style="flex:1">' + esc(r.note) + '</span><span class="mono muted" style="font-size:11px">' + fmtDot(r.at) + "</span></li>").join("") || '<li class="muted">아직 개정 이력이 없어요.</li>') + "</ul></section>" +
     "</div>" +
-    '<div class="dwg-foot">' + titleBlock([["도판", "IV"], ["제목", "지표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["출처", "응답 원값"]]) + "</div>";
+    '<div class="dwg-foot">' + titleBlock([["제목", "지표"], ["판", revStr()], ["날짜", fmtDot(nowISO())], ["출처", "응답 원값"]]) + "</div>";
 }
 
 /* ============================================================ shell, router, events */
@@ -3118,13 +3118,13 @@ const DRAWING_VIEWS = ["portrait", "map", "gantt", "metrics"];
 function buildShell() {
   const nav = (v, icon, label) => '<a href="#' + v + '" data-go="' + v + '">' + icon + "<span>" + label + "</span></a>";
   $("#app").innerHTML =
-    '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">Atlas</div><div class="brand-sub">나의 지도책</div></div></div><div class="brand-who"><span id="rOwner"></span><span class="mono" id="rRev"></span></div></div>' +
-    '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "개요") + nav("ledger", I.ledger, "원장") + nav("journey", I.route, "탐구") + nav("interview", I.chat, "AI 인터뷰") + nav("log", I.log, "기록") + nav("tree", I.tree, "생각 나무") +
-    '<div class="nav-label">지도</div>' + nav("portrait", I.person, "자기 초상") + nav("map", I.map, "관계 지도") + nav("gantt", I.gantt, "인생 연표") + nav("metrics", I.chart, "지표") +
-    '<div class="nav-label">꺼내 쓰기</div>' + nav("export", I.pack, "용도별 팩") + "</nav>" +
+    '<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">' + I.logo + '<div><div class="brand-name">Atlas</div></div></div><div class="brand-who"><span id="rOwner"></span><span class="mono" id="rRev"></span></div></div>' +
+    '<nav class="nav" aria-label="주 메뉴">' + nav("home", I.home, "개요") + nav("ledger", I.ledger, "Records") + nav("journey", I.route, "탐구") + nav("interview", I.chat, "AI 인터뷰") + nav("log", I.log, "기록") + nav("tree", I.tree, "생각 나무") +
+    '<div class="nav-label">한눈에 보기</div>' + nav("portrait", I.person, "자화상") + nav("map", I.map, "Network") + nav("gantt", I.gantt, "연표") + nav("metrics", I.chart, "지표") +
+    '<div class="nav-label">꺼내 쓰기</div>' + nav("export", I.pack, "Pack") + "</nav>" +
     '<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div><details class="diag"><summary>연결 상태</summary><div class="diag-body"></div></details></div></aside>' +
     '<div class="main"><header class="topbar-m"><div class="brand-mark">' + I.logo + '<span class="brand-name">Atlas</span></div><div class="row" style="gap:10px"><span class="mono muted" id="mRev" style="font-size:11px"></span><span class="save-state"><i></i><span>저장됨</span></span></div></header><main class="page" id="page"></main></div>' +
-    '<nav class="tabbar" aria-label="하단 메뉴">' + [["home", I.home, "개요"], ["ledger", I.ledger, "원장"], ["journey", I.route, "탐구"], ["interview", I.chat, "인터뷰"], ["export", I.pack, "팩"]].map(([v, ic, l]) => '<a href="#' + v + '" data-go="' + v + '" data-tab="' + v + '">' + ic + l + "</a>").join("") + "</nav></div>";
+    '<nav class="tabbar" aria-label="하단 메뉴">' + [["home", I.home, "개요"], ["ledger", I.ledger, "Records"], ["journey", I.route, "탐구"], ["interview", I.chat, "인터뷰"], ["export", I.pack, "Pack"]].map(([v, ic, l]) => '<a href="#' + v + '" data-go="' + v + '" data-tab="' + v + '">' + ic + l + "</a>").join("") + "</nav></div>";
   setSave(S.mode === "cloud" ? "idle" : S.mode === "local" ? "local" : "off");
 }
 let lastView = null;
@@ -3290,7 +3290,7 @@ const ACT = {
     const v = $("#newEntValue"), val = v && v.value.trim(); if (!val) { v && v.focus(); toast("내용을 적어 주세요."); return; }
     const d = normYM($("#newEntDate").value); if (!d.ok) { toast("날짜는 2024 또는 2024-05처럼 적어 주세요."); return; }
     addEntry({ cat: a.dataset.cat, sub: $("#newEntSub").value.trim(), label: $("#newEntLabel").value.trim(), value: val, date: d.v, conf: $("#newEntEst").checked ? "est" : "sure" });
-    needDirty(); render(); toast("원장에 적었어요."); const f = $("#newEntLabel"); if (f) f.focus();
+    needDirty(); render(); toast("Records에 적었어요."); const f = $("#newEntLabel"); if (f) f.focus();
   },
   entryDel: (a) => {
     const id = a.dataset.id; const P = S.P; const f = P.ledger.find((x) => x.id === id);
@@ -3305,7 +3305,7 @@ const ACT = {
     const i = +a.dataset.i, q = S.NUDGE.questions[i], el = $("#nq_" + i), v = el && el.value.trim(); if (!q || !v) { el && el.focus(); return; }
     const e = addEntry({ cat: CAT_BY[q.cat] ? q.cat : "etc", label: q.label || "", value: v, src: "nudge" });
     if (q.entry) { const old = S.P.ledger.find((x) => x.id === q.entry); if (old) old.up = nowISO(); }
-    q.done = true; q.answer = e.id; q.at = nowISO(); needDirty(); render(); toast("원장에 적었어요.");
+    q.done = true; q.answer = e.id; q.at = nowISO(); needDirty(); render(); toast("Records에 적었어요.");
   },
   nudgeSkip: (a) => { const q = S.NUDGE.questions[+a.dataset.i]; if (!q) return; q.skip = true; needDirty(); render(); },
   /* export */
@@ -3371,7 +3371,7 @@ const ACT = {
       const fs = await aiExtractFromRecord(r);
       r.extracted = []; fs.forEach((f) => r.extracted.push(addEntry({ cat: f.cat, label: f.label, value: f.text, src: "record", rec: r.id }).id));
       r.extractedNone = !fs.length; markDirty();
-      toast(fs.length ? "사실 " + fs.length + "개를 원장에 더했어요." : "새로 뽑을 사실이 없었어요.");
+      toast(fs.length ? "사실 " + fs.length + "개를 Records에 더했어요." : "새로 뽑을 사실이 없었어요.");
     } catch (e) { toast(aiErrMsg(e), 4200); }
     S.ui.busy["rec_" + r.id] = false; render();
   },
@@ -3404,7 +3404,7 @@ function scrollCh() { const el = $("#chSheet"); if (el) { const top = el.getBoun
 
 /* ---------------- start ---------------- */
 (async function main() {
-  $("#app").innerHTML = '<div class="boot">' + I.logo.replace("<svg", '<svg width="40" height="40"') + "<span>ATLAS · 지도책을 펴는 중</span></div>";
+  $("#app").innerHTML = '<div class="boot">' + I.logo.replace("<svg", '<svg width="40" height="40"') + "<span>ATLAS · 불러오는 중</span></div>";
   const h = (location.hash || "").replace("#", ""); if (ROUTES[h]) S.ui.view = h;
   try { await boot(); } catch (e) { S.mode = "local"; S.P = ensureShape(blankProfile()); }
   buildShell(); render();
