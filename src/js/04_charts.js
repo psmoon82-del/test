@@ -56,7 +56,7 @@ function quadSVG(dt, size) {
   let g = '<rect x="' + p + '" y="' + p + '" width="' + (size - 2 * p) + '" height="' + (size - 2 * p) + '" ' + st({ fill: "var(--sheet-2)", stroke: "var(--rule)" }) + "/>";
   g += '<line x1="' + c + '" y1="' + p + '" x2="' + c + '" y2="' + (size - p) + '" ' + st({ stroke: "var(--rule)" }) + '/><line x1="' + p + '" y1="' + c + '" x2="' + (size - p) + '" y2="' + c + '" ' + st({ stroke: "var(--rule)" }) + "/>";
   const q = [["C", "신중형", p + 8, p + 18, "start"], ["D", "주도형", size - p - 8, p + 18, "end"], ["S", "안정형", p + 8, size - p - 10, "start"], ["I", "사교형", size - p - 8, size - p - 10, "end"]];
-  q.forEach(([k, n, x, y, a]) => { const on = dt.top.includes(k); g += '<text x="' + x + '" y="' + y + '" text-anchor="' + a + '" ' + st({ fill: on ? "var(--ink)" : "var(--ink-3)", "font-size": "11.5px", "font-weight": on ? "700" : "500" }) + ">" + k + " " + n + (dt.n ? " " + dt.t[k] : "") + "</text>"; });
+  q.forEach(([k, n, x, y, a]) => { const on = dt.top.includes(k); g += '<text x="' + x + '" y="' + y + '" text-anchor="' + a + '" ' + st({ fill: on ? "var(--ink)" : "var(--ink-3)", "font-size": "11.5px", "font-weight": on ? "700" : "500" }) + ">" + k + " " + n + (dt.n ? " " + fmtW(dt.t[k]) : "") + "</text>"; });
   g += '<text x="' + c + '" y="' + (p - 10) + '" text-anchor="middle" class="tick">과제 중심</text><text x="' + c + '" y="' + (size - p + 18) + '" text-anchor="middle" class="tick">사람 중심</text>';
   g += '<text x="' + (p - 4) + '" y="' + (c + 3) + '" text-anchor="end" class="tick">신중</text>';
   g += '<text x="' + (size - p + 4) + '" y="' + (c + 3) + '" text-anchor="start" class="tick">속도</text>';
@@ -71,10 +71,12 @@ function quadSVG(dt, size) {
 /* trait bars (Big Five) as HTML */
 function traitRows(tr, withDesc) {
   return TRAIT_ORDER.map((k) => {
-    const T = TRAITS[k], s = tr[k].score, L2 = lvl(s);
+    const T = TRAITS[k], r = tr[k], s = r.score, L2 = lvl(s);
     const pct = s == null ? 0 : ((s - 1) / 4) * 100;
-    return '<div class="trait"><div class="nm">' + T.name + "<small>" + T.lo + " ↔ " + T.hi + '</small></div><div class="track"><span class="mid"></span><i ' + st({ width: pct + "%", background: "var(--c-traits)", opacity: s == null ? ".25" : "1" }) + '></i></div><div class="v">' + (s == null ? "–" : s.toFixed(1)) + "</div>" +
-      (withDesc && s != null ? '<div class="trait-desc"><b>' + LVL_KO[L2] + "</b> · " + T.d[L2] + "</div>" : "") + "</div>";
+    const wide = s != null && r.hi - r.lo >= 0.5;
+    const band = wide ? '<b class="band" ' + st({ left: ((r.lo - 1) / 4) * 100 + "%", width: ((r.hi - r.lo) / 4) * 100 + "%" }) + ' title="' + r.lo.toFixed(1) + "~" + r.hi.toFixed(1) + '"></b>' : "";
+    return '<div class="trait"><div class="nm">' + T.name + "<small>" + T.lo + " ↔ " + T.hi + '</small></div><div class="track"><span class="mid"></span><i ' + st({ width: pct + "%", background: "var(--c-traits)", opacity: s == null ? ".25" : wide ? ".55" : "1" }) + "></i>" + band + '</div><div class="v">' + (s == null ? "–" : s.toFixed(1) + (wide ? '<small class="rng">' + r.lo.toFixed(1) + "~" + r.hi.toFixed(1) + "</small>" : "")) + "</div>" +
+      (withDesc && s != null ? '<div class="trait-desc"><b>' + LVL_KO[L2] + "</b> · " + T.d[L2] + (wide ? " <b>상황에 따라 폭이 넓어요</b>(" + r.lo.toFixed(1) + "~" + r.hi.toFixed(1) + "). 한쪽으로 고정된 사람이 아니라 자리에 맞춰 조절하는 편이에요." : "") + "</div>" : "") + "</div>";
   }).join("");
 }
 
@@ -102,7 +104,7 @@ function wheelDumbbell(ws) {
 /* value ranking HTML */
 function valueRows(vs, topN) {
   const max = 1;
-  return '<div class="vrank">' + vs.map((v, i) => '<div class="vrow' + (i < (topN || 3) && v.score != null ? " top" : "") + '"><span class="i">' + pad2(i + 1) + '</span><span class="nm">' + VAL_BY[v.id].name + '</span><span class="b"><i style="width:' + (v.score == null ? 0 : (v.score / max) * 100) + '%"></i></span><span class="v">' + (v.n ? v.wins + "/" + v.n : "–") + "</span></div>").join("") + "</div>";
+  return '<div class="vrank">' + vs.map((v, i) => '<div class="vrow' + (i < (topN || 3) && v.score != null ? " top" : "") + '"><span class="i">' + pad2(i + 1) + '</span><span class="nm">' + VAL_BY[v.id].name + '</span><span class="b"><i style="width:' + (v.score == null ? 0 : (v.score / max) * 100) + '%"></i></span><span class="v">' + (v.n ? fmtW(v.wins) + "/" + v.n : "–") + "</span></div>").join("") + "</div>";
 }
 
 /* compact previews for home cards */

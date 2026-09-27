@@ -109,15 +109,26 @@ function ensureTreeAreas(P) {
 function treeChildrenOf(P, pid) { return P.tree.nodes.filter((n) => n.parent === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
 
 /* ---------------- scoring ---------------- */
+/* Answers can be a single point or a range {lo, hi}: people who act differently by situation
+   answer with their lowest and highest (Fleeson's "traits as density distributions").
+   The score is the midpoint; lo/hi keep the spread. Reverse-keyed items flip the range. */
+function ipipRange(v) { if (v == null) return null; if (typeof v === "number") return { lo: v, hi: v }; return { lo: Math.min(v.lo, v.hi), hi: Math.max(v.lo, v.hi) }; }
 function ipipScores(P) {
   const out = {};
   for (const t of TRAIT_ORDER) {
-    const its = IPIP.filter((x) => x.t === t);
-    const vals = its.map((x) => { const v = P.ipip.answers[x.n]; return v == null ? null : x.k > 0 ? v : 6 - v; }).filter((v) => v != null);
-    out[t] = { n: vals.length, score: vals.length ? avg(vals) : null };
+    const rs = IPIP.filter((x) => x.t === t).map((x) => { const r = ipipRange(P.ipip.answers[x.n]); if (!r) return null; return x.k > 0 ? r : { lo: 6 - r.hi, hi: 6 - r.lo }; }).filter(Boolean);
+    const lo = rs.length ? avg(rs.map((r) => r.lo)) : null, hi = rs.length ? avg(rs.map((r) => r.hi)) : null;
+    out[t] = { n: rs.length, score: rs.length ? (lo + hi) / 2 : null, lo, hi, flex: rs.filter((r) => r.hi - r.lo >= 2).length };
   }
   return out;
 }
+/* forced-choice answers: a/b with strength 2 (clearly) or 1 (leaning), or m (depends on the situation) */
+function leanW(pick, str) {
+  if (pick === "m") return [0.5, 0.5];
+  const s = str === 1 ? 0.75 : 1;
+  return pick === "a" ? [s, 1 - s] : pick === "b" ? [1 - s, s] : null;
+}
+const fmtW = (w) => (Number.isInteger(w) ? String(w) : w.toFixed(1).replace(/\.0$/, ""));
 const lvl = (s) => (s == null ? null : s >= 3.6 ? "hi" : s <= 2.6 ? "lo" : "mid");
 const LVL_KO = { hi: "높음", mid: "중간", lo: "낮음" };
 
@@ -125,17 +136,17 @@ function valueScores(P) {
   const m = {};
   VALUES.forEach((v) => (m[v.id] = { id: v.id, wins: 0, n: 0 }));
   DILEMMAS.forEach((d, i) => {
-    const p = P.values.picks[i];
-    if (!p) return;
+    const w = leanW(P.values.picks[i], (P.values.str || {})[i]);
+    if (!w) return;
     m[d.a[0]].n++; m[d.b[0]].n++;
-    m[p === "a" ? d.a[0] : d.b[0]].wins++;
+    m[d.a[0]].wins += w[0]; m[d.b[0]].wins += w[1];
   });
   return Object.values(m).map((r) => ({ ...r, score: r.n ? r.wins / r.n : null }))
     .sort((x, y) => (y.score ?? -1) - (x.score ?? -1) || y.wins - x.wins);
 }
 function discTally(P) {
   const t = { D: 0, I: 0, S: 0, C: 0 }; let n = 0;
-  DISC_PAIRS.forEach((p, i) => { const v = P.energy.disc[i]; if (v === "a") { t[p.a[0]]++; n++; } else if (v === "b") { t[p.b[0]]++; n++; } });
+  DISC_PAIRS.forEach((p, i) => { const w = leanW(P.energy.disc[i], (P.energy.discStr || {})[i]); if (!w) return; t[p.a[0]] += w[0]; t[p.b[0]] += w[1]; n++; });
   const x = n ? ((t.D + t.I) - (t.S + t.C)) / n : 0;
   const y = n ? ((t.D + t.C) - (t.I + t.S)) / n : 0;
   const top = n ? Object.entries(t).sort((a, b) => b[1] - a[1]).filter((e, i, arr) => e[1] === arr[0][1]).map((e) => e[0]) : [];

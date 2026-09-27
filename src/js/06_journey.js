@@ -84,20 +84,33 @@ function stepWheel(k) {
 
 /* ---------------- CH02 ipip ---------------- */
 function stepIpip(k) {
-  return '<p class="muted" style="margin-bottom:4px">평소의 나를 떠올리며 답해 주세요. 되고 싶은 모습이 아니라 지금의 모습 그대로요.</p>' +
+  const notes = S.P.ipip.notes || {};
+  return '<p class="muted" style="margin-bottom:4px">평소의 나를 떠올리며 답해 주세요. 되고 싶은 모습이 아니라 지금의 모습 그대로요. 자리에 따라 크게 달라진다면 <b style="color:var(--ink)">상황에 따라 달라요</b>를 누르고 가장 낮을 때와 가장 높을 때를 골라 주세요.</p>' +
     IPIP.slice(k * 4, k * 4 + 4).map((x) => {
-      const v = S.P.ipip.answers[x.n];
-      return '<div class="lk"><div class="q"><small>' + pad2(x.n) + "</small>" + esc(x.q) + '</div><div class="opts" role="group">' + LIKERT.map((l, i) => '<button class="' + (v === i + 1 ? "on" : "") + '" data-act="ipip" data-n="' + x.n + '" data-v="' + (i + 1) + '">' + l + "</button>").join("") + "</div></div>";
+      const v = S.P.ipip.answers[x.n], range = v != null && typeof v === "object", r = ipipRange(v);
+      const cls = (i) => { const n = i + 1; if (!r) return ""; if (!range) return n === r.lo ? "on" : ""; return n === r.lo || n === r.hi ? "on" : n > r.lo && n < r.hi ? "in" : ""; };
+      const toggle = range ? '<button class="link" data-act="ipipFlex" data-n="' + x.n + '">하나로 정하기</button>' : '<button class="link" data-act="ipipFlex" data-n="' + x.n + '">상황에 따라 달라요</button>';
+      return '<div class="lk' + (range ? " ranged" : "") + '"><div class="q"><small>' + pad2(x.n) + "</small>" + esc(x.q) + '</div><div class="opts" role="group">' + LIKERT.map((l, i) => '<button class="' + cls(i) + '" data-act="ipip" data-n="' + x.n + '" data-v="' + (i + 1) + '">' + l + "</button>").join("") + "</div>" +
+        '<div class="lk-foot">' + (range ? '<span class="muted">바깥쪽을 누르면 범위가 넓어지고, 안쪽을 누르면 좁아져요.</span>' : "<span></span>") + toggle + "</div>" +
+        (range && r.hi > r.lo ? '<input class="input lk-note" data-bind="P.ipip.notes.' + x.n + '" value="' + esc(notes[x.n] || "") + '" placeholder="언제 높고 언제 낮은가요? (예: 친한 자리에선 매우 그렇다, 낯선 모임에선 아닌 편)">' : "") + "</div>";
     }).join("");
+}
+/* A clearly / A leaning / depends / B leaning / B clearly */
+function leanRow(act, i, pick, str, labels) {
+  const opts = [["a", 1, labels[0]], ["m", 0, "상황에 따라"], ["b", 1, labels[1]]];
+  return '<div class="lean" role="group">' + opts.map(([v, s, l]) => '<button class="' + (pick === v && (v === "m" || str === 1) ? "on" : "") + '" data-act="' + act + '" data-i="' + i + '" data-v="' + v + '" data-s="' + s + '">' + l + "</button>").join("") + "</div>";
 }
 
 /* ---------------- CH03 values ---------------- */
 function stepDilemma(i) {
-  const d = DILEMMAS[i], p = S.P.values.picks[i];
+  const d = DILEMMAS[i], p = S.P.values.picks[i], str = (S.P.values.str || {})[i] ?? 2;
+  const mN = Object.values(S.P.values.picks).filter((x) => x === "m").length;
   const prior = S.P.prior && S.P.prior.valuesTop3 && i === 0 ? '<div class="qhint"><b>참고</b><span>지난번에 10개 가치 중 직접 고른 Top 3는 ' + S.P.prior.valuesTop3.map((id) => VAL_BY[id]?.name).join(" · ") + "였어요. 이번엔 고르는 대신 선택으로 드러나는 순위를 봅니다. 결과에서 둘을 비교해요.</span></div>" : "";
   return '<div class="dl">' + prior + '<div class="sc">DILEMMA ' + pad2(i + 1) + " / " + DILEMMAS.length + '</div><div class="q">' + esc(d.q) + '</div><div class="opts">' +
-    [["a", d.a], ["b", d.b]].map(([k, o]) => '<button class="opt ' + (p === k ? "on" : "") + '" data-act="dilemma" data-i="' + i + '" data-v="' + k + '"><span class="k">' + k.toUpperCase() + '</span><span class="t">' + esc(o[1]) + "</span></button>").join("") +
-    '</div><p class="muted" style="font-size:12.5px">둘 다 끌려도 굳이 하나를 고르면? 고르면 다음 문제로 넘어가요.</p></div>';
+    [["a", d.a], ["b", d.b]].map(([k, o]) => '<button class="opt ' + (p === k && str === 2 ? "on" : p === k ? "half" : "") + '" data-act="dilemma" data-i="' + i + '" data-v="' + k + '" data-s="2"><span class="k">' + k.toUpperCase() + '</span><span class="t">' + esc(o[1]) + "</span></button>").join("") +
+    "</div>" + leanRow("dilemma", i, p, str, ["A 쪽에 가까움", "B 쪽에 가까움"]) +
+    (p === "m" ? '<input class="input" data-bind="P.values.notes.' + i + '" value="' + esc((S.P.values.notes || {})[i] || "") + '" placeholder="어떤 상황에서 A를, 언제 B를 고르나요?">' : "") +
+    '<p class="muted" style="font-size:12.5px">카드를 누르면 확실히 그쪽, 아래 버튼은 기울기예요. 고르면 다음 문제로 넘어가요.' + (mN > 4 ? ' <b style="color:var(--signal)">"상황에 따라"가 ' + mN + "개예요. 너무 많으면 우선순위가 흐려져요.</b>" : "") + "</p></div>";
 }
 
 /* ---------------- CH04 energy ---------------- */
@@ -121,7 +134,13 @@ function stepChrono() {
 function stepDisc() {
   const d = S.P.energy.disc;
   const migrated = Object.keys(d).length && S.P.prior && S.P.prior.valuesTop3 ? '<div class="qhint" style="margin-bottom:14px"><b>이어받음</b><span>지난 버전에서 답한 8문항을 그대로 가져왔어요. 바꾸고 싶은 답만 다시 눌러 주세요.</span></div>' : "";
-  return migrated + '<p class="muted" style="margin-bottom:12px">두 문장 중 일할 때의 나에 더 가까운 쪽을 고르세요.</p>' + DISC_PAIRS.map((p, i) => '<div class="pair">' + [["a", p.a], ["b", p.b]].map(([k, o]) => '<button class="' + (d[i] === k ? "on" : "") + '" data-act="disc" data-i="' + i + '" data-v="' + k + '">' + esc(o[1]) + "</button>").join("") + "</div>").join("");
+  const ds = S.P.energy.discStr || {}, dn = S.P.energy.discNotes || {};
+  return migrated + '<p class="muted" style="margin-bottom:12px">두 문장 중 일할 때의 나에 더 가까운 쪽을 고르세요. 문장을 누르면 확실히 그쪽, 가운데 버튼은 기울기나 "상황에 따라"예요.</p>' + DISC_PAIRS.map((p, i) => {
+    const v = d[i], s = ds[i] ?? 2;
+    return '<div class="pair5"><button class="' + (v === "a" && s === 2 ? "on" : v === "a" ? "half" : "") + '" data-act="disc" data-i="' + i + '" data-v="a" data-s="2">' + esc(p.a[1]) + "</button>" + leanRow("disc", i, v, s, ["← 가까움", "가까움 →"]) +
+      '<button class="' + (v === "b" && s === 2 ? "on" : v === "b" ? "half" : "") + '" data-act="disc" data-i="' + i + '" data-v="b" data-s="2">' + esc(p.b[1]) + "</button>" +
+      (v === "m" ? '<input class="input" data-bind="P.energy.discNotes.' + i + '" value="' + esc(dn[i] || "") + '" placeholder="어떤 상황에서 어느 쪽이 되나요?">' : "") + "</div>";
+  }).join("");
 }
 
 /* ---------------- CH05 loves (drill-down) ---------------- */

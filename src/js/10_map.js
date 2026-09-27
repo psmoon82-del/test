@@ -12,7 +12,7 @@ function buildGraph(P) {
   else ((P.prior && P.prior.valuesTop3) || []).forEach((id) => leaf("values", "v_" + id, VAL_BY[id].name, VAL_BY[id].d + " · 직접 고른 가치", 2));
   // traits
   const tr = ipipScores(P);
-  TRAIT_ORDER.forEach((k) => { const s = tr[k].score; if (s == null) return; const L2 = lvl(s); if (L2 === "mid") return; leaf("traits", "t_" + k, TRAITS[k].name + " " + LVL_KO[L2], TRAITS[k].d[L2], 2); });
+  TRAIT_ORDER.forEach((k) => { const r = tr[k], s = r.score; if (s == null) return; const L2 = lvl(s), wide = r.hi - r.lo >= 1; if (L2 === "mid" && !wide) return; leaf("traits", "t_" + k, TRAITS[k].name + " " + (wide ? "상황에 따라" : LVL_KO[L2]), wide ? r.lo.toFixed(1) + "~" + r.hi.toFixed(1) + " 사이를 오가요. " + TRAITS[k].d[L2] : TRAITS[k].d[L2], 2); });
   // energy
   energyLists(P).c.slice(0, 7).forEach((a) => leaf("energy", "e_" + a.id, shortAct(a.t), "하고 나면 충전되는 활동", 2));
   const dt = discTally(P); if (dt.n) leaf("energy", "e_disc", "일하는 방식: " + dt.top.map((k) => DISC[k].name).join("·"), dt.top.map((k) => DISC[k].d).join(" "), 2);

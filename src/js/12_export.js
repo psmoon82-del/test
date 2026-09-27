@@ -17,7 +17,7 @@ function packText(P, pack) {
   if (part("mind")) {
     const tr = ipipScores(P), vs = valueScores(P).filter((v) => v.n), el = energyLists(P), dt = discTally(P), cr = chrono(P), ws = wheelStats(P).filter((w) => w.sat != null);
     const lines = [];
-    if (TRAIT_ORDER.some((k) => tr[k].n)) lines.push("성격(Big Five, 1~5): " + TRAIT_ORDER.filter((k) => tr[k].n).map((k) => TRAITS[k].name + " " + tr[k].score.toFixed(1) + "(" + LVL_KO[lvl(tr[k].score)] + ")").join(", "));
+    if (TRAIT_ORDER.some((k) => tr[k].n)) lines.push("성격(Big Five, 1~5): " + TRAIT_ORDER.filter((k) => tr[k].n).map((k) => TRAITS[k].name + " " + tr[k].score.toFixed(1) + "(" + LVL_KO[lvl(tr[k].score)] + (tr[k].hi - tr[k].lo >= 0.5 ? ", 상황에 따라 " + tr[k].lo.toFixed(1) + "~" + tr[k].hi.toFixed(1) : "") + ")").join(", "));
     if (vs.length) lines.push("가치 우선순위: " + vs.slice(0, 6).map((v) => VAL_BY[v.id].name).join(" > "));
     if (el.c.length) lines.push("힘이 나는 활동: " + el.c.map((a) => shortAct(a.t)).join(", "));
     if (el.d.length) lines.push("진이 빠지는 활동: " + el.d.map((a) => shortAct(a.t)).join(", "));
@@ -26,6 +26,8 @@ function packText(P, pack) {
     if (ws.length) lines.push("삶의 영역별 만족도(0~10): " + ws.map((w) => w.name + " " + w.sat).join(", "));
     if (P.energy.flowRecent) lines.push("최근 몰입: " + P.energy.flowRecent);
     if (lines.length) { L.push("", "## 성향"); lines.forEach((x) => L.push("- " + x)); }
+    const sit = situational(P);
+    if (sit.length) { L.push("", "### 상황에 따라 달라지는 모습", "한 가지로 고정된 성향이 아니니 조건과 함께 봐 주세요."); sit.forEach((x) => L.push("- " + x)); }
   }
   pack.cats.forEach((c) => {
     const xs = P.ledger.filter((e) => e.cat === c);
@@ -101,8 +103,8 @@ function basicsRows(P) { const b = P.basics; return [["이름", "name"], ["호�
 function answerRows(P) {
   const out = [];
   wheelStats(P).forEach((w) => out.push({ 구분: "라이프 휠", 항목: w.name, 값: w.sat ?? "", 보조: w.imp ?? "" }));
-  IPIP.forEach((x) => out.push({ 구분: "성격 문항", 항목: x.q, 값: P.ipip.answers[x.n] ?? "", 보조: "" }));
-  DILEMMAS.forEach((d, i) => { const p = P.values.picks[i]; out.push({ 구분: "가치 딜레마", 항목: d.q, 값: p ? (p === "a" ? d.a[1] : d.b[1]) : "", 보조: "" }); });
+  IPIP.forEach((x) => { const r = ipipRange(P.ipip.answers[x.n]); out.push({ 구분: "성격 문항", 항목: x.q, 값: r ? (r.lo === r.hi ? r.lo : r.lo + "~" + r.hi) : "", 보조: (P.ipip.notes || {})[x.n] || "" }); });
+  DILEMMAS.forEach((d, i) => { const p = P.values.picks[i], s = (P.values.str || {})[i]; out.push({ 구분: "가치 딜레마", 항목: d.q, 값: p ? (p === "m" ? "상황에 따라" : (p === "a" ? d.a[1] : d.b[1]) + (s === 1 ? " (가까움)" : "")) : "", 보조: (P.values.notes || {})[i] || "" }); });
   allActs(P).forEach((a) => out.push({ 구분: "에너지", 항목: a.t, 값: ({ c: "충전", n: "보통", d: "방전" })[P.energy.acts[a.id]] || "", 보조: "" }));
   return out;
 }

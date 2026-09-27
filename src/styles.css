@@ -673,3 +673,24 @@ h3{font-size:15px}
 @media (max-width:900px){.led-note{display:none}}
 .led-sec > .btn,.led-sec > .kv + .btn{align-self:flex-start}
 .tn-hint{font-family:var(--f-sans);font-size:11.5px;font-weight:400;color:var(--ink-4)}
+
+/* answers that depend on the situation */
+.lk .opts button.in{background:color-mix(in srgb,var(--ink) 18%,var(--sheet));border-color:var(--ink-4);color:var(--ink)}
+.lk.ranged .opts button.on{background:var(--c-traits);border-color:var(--c-traits);color:#fff}
+.lk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;font-size:12px}
+.lk-note{margin-top:8px;font-size:13px}
+.lean{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.lean button{border:1px dashed var(--rule);background:var(--sheet);border-radius:6px;padding:7px 6px;font-size:12.5px;color:var(--ink-2)}
+.lean button:hover{border-color:var(--ink-4)}
+.lean button.on{border-style:solid;border-color:var(--accent);background:var(--accent-2);color:var(--accent);font-weight:600}
+.dl .opt.half{border-color:var(--accent-3);background:color-mix(in srgb,var(--accent-2) 55%,var(--sheet))}
+.pair5{display:grid;grid-template-columns:minmax(0,1fr) 260px minmax(0,1fr);gap:8px;align-items:center;margin-bottom:10px}
+.pair5 > button{text-align:left;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.4;height:100%}
+.pair5 > button:hover{border-color:var(--ink-4)}
+.pair5 > button.on{border-color:var(--accent);background:var(--accent-2);box-shadow:inset 0 0 0 1px var(--accent);font-weight:600}
+.pair5 > button.half{border-color:var(--accent-3);background:color-mix(in srgb,var(--accent-2) 55%,var(--sheet))}
+.pair5 .lean button{padding:6px 2px;font-size:11.5px;white-space:nowrap}
+.pair5 > input{grid-column:1/-1}
+@media (max-width:640px){.pair5{grid-template-columns:1fr}}
+.track .band{position:absolute;top:-2px;bottom:-2px;border-radius:6px;background:color-mix(in srgb,var(--c-traits) 30%,transparent);border:1.5px solid var(--c-traits)}
+.trait .v small.rng{display:block;font-size:10px;color:var(--ink-3)}

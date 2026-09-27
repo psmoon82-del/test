@@ -142,14 +142,31 @@ const ACT = {
   basicsConfirm: () => { S.P.basics.confirmed = true; S.P.basics.birthEst = false; needDirty(); render(); toast("기본 정보를 확인했어요."); },
   wheelSat: (a) => { const P = S.P; P.wheel.areas[a.dataset.a] = Object.assign(P.wheel.areas[a.dataset.a] || {}, { sat: +a.dataset.v }); needDirty(); render(); },
   wheelImp: (a) => { const P = S.P; P.wheel.areas[a.dataset.a] = Object.assign(P.wheel.areas[a.dataset.a] || {}, { imp: +a.dataset.v }); needDirty(); render(); },
-  ipip: (a) => { S.P.ipip.answers[a.dataset.n] = +a.dataset.v; needDirty(); render(); },
+  ipip: (a) => {
+    const n = a.dataset.n, v = +a.dataset.v, cur = S.P.ipip.answers[n];
+    if (cur != null && typeof cur === "object") {
+      /* range mode: outside extends, inside moves the nearer end */
+      let { lo, hi } = ipipRange(cur);
+      if (v <= lo) lo = v; else if (v >= hi) hi = v; else if (v - lo <= hi - v) lo = v; else hi = v;
+      S.P.ipip.answers[n] = { lo, hi };
+    } else S.P.ipip.answers[n] = v;
+    needDirty(); render();
+  },
+  ipipFlex: (a) => {
+    const n = a.dataset.n, cur = S.P.ipip.answers[n];
+    if (cur != null && typeof cur === "object") { const r = ipipRange(cur); S.P.ipip.answers[n] = Math.round((r.lo + r.hi) / 2); }
+    else S.P.ipip.answers[n] = { lo: cur ?? 3, hi: cur ?? 3 };
+    S.P.ipip.notes = S.P.ipip.notes || {};
+    needDirty(); render();
+  },
   dilemma: (a) => {
-    const i = +a.dataset.i; S.P.values.picks[i] = a.dataset.v; needDirty(); render();
+    const i = +a.dataset.i, v = a.dataset.v; S.P.values.picks[i] = v; S.P.values.str = S.P.values.str || {}; S.P.values.str[i] = +a.dataset.s || 0; S.P.values.notes = S.P.values.notes || {}; needDirty(); render();
+    if (v === "m") return;
     setTimeout(() => { if (S.ui.view === "journey" && curCh().id === "values" && S.ui.step === i) { S.ui.step = Math.min(DILEMMAS.length, i + 1); render(); } }, 280);
   },
   act: (a) => { S.P.energy.acts[a.dataset.a] = a.dataset.v; needDirty(); render(); },
   chrono: (a) => { S.P.energy.chrono[a.dataset.q] = +a.dataset.v; needDirty(); render(); },
-  disc: (a) => { S.P.energy.disc[a.dataset.i] = a.dataset.v; needDirty(); render(); },
+  disc: (a) => { const i = a.dataset.i; S.P.energy.disc[i] = a.dataset.v; S.P.energy.discStr = S.P.energy.discStr || {}; S.P.energy.discStr[i] = +a.dataset.s || 0; S.P.energy.discNotes = S.P.energy.discNotes || {}; needDirty(); render(); },
   loveCat: (a) => { const id = a.dataset.id || null; S.ui.lovesCat = id; if (id && !S.P.loves.seen[id]) { S.P.loves.seen[id] = true; needDirty(); } render(); scrollCh(); },
   loveSub: (a) => { const x = S.P.loves.cats[S.ui.lovesCat]; const v = a.dataset.v; const i = x.subs.indexOf(v); if (i > -1) x.subs.splice(i, 1); else x.subs.push(v); needDirty(); render(); },
   loveSubAdd: () => { const el = $("#newSub"); const v = el && el.value.trim(); if (!v) return; const x = S.P.loves.cats[S.ui.lovesCat]; if (!x.subs.includes(v)) x.subs.push(v); needDirty(); render(); },

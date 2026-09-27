@@ -1,6 +1,16 @@
 /* ============================================================ Claude: profile digest, prompts, calls */
 const cut = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 
+/* answers the owner marked as depending on the situation, with their notes */
+function situational(P) {
+  const out = [], ipn = P.ipip.notes || {};
+  IPIP.forEach((x) => { const r = ipipRange(P.ipip.answers[x.n]); if (r && r.hi > r.lo) out.push("「" + x.q + "」 " + LIKERT[r.lo - 1] + " ~ " + LIKERT[r.hi - 1] + (ipn[x.n] ? ": " + cut(ipn[x.n], 120) : "")); });
+  const vn = P.values.notes || {};
+  DILEMMAS.forEach((d, i) => { if (P.values.picks[i] === "m") out.push("딜레마 「" + d.q + "」(" + d.a[1] + " / " + d.b[1] + ") 상황에 따라" + (vn[i] ? ": " + cut(vn[i], 120) : "")); });
+  const dn = P.energy.discNotes || {};
+  DISC_PAIRS.forEach((p, i) => { if (P.energy.disc[i] === "m") out.push("일하는 방식 「" + p.a[1] + " / " + p.b[1] + "」 상황에 따라" + (dn[i] ? ": " + cut(dn[i], 120) : "")); });
+  return out;
+}
 /* shared helpers for ledger entries and the think tree */
 const SRC_LABEL = { interview: "AI 인터뷰", record: "기록에서 추출", nudge: "주간 질문", import: "엑셀 가져오기", "": "직접 입력" };
 function entryText(e) { return (e.label ? e.label + ": " : "") + (e.value || ""); }
@@ -30,9 +40,11 @@ function digest(P, opt) {
   const ws = wheelStats(P).filter((w) => w.sat != null);
   if (ws.length) L.push("[지금의 나 · 라이프 휠: 만족 0~10 / 중요 1~5] " + ws.map((w) => w.name + " 만족" + w.sat + "·중요" + (w.imp ?? "?") + (w.note ? "(" + cut(w.note, 50) + ")" : "")).join(", "));
   const tr = ipipScores(P);
-  if (TRAIT_ORDER.some((t) => tr[t].n)) L.push("[성격 Big Five, 1~5] " + TRAIT_ORDER.filter((t) => tr[t].n).map((t) => TRAITS[t].name + " " + tr[t].score.toFixed(1) + "(" + LVL_KO[lvl(tr[t].score)] + ")").join(", "));
+  if (TRAIT_ORDER.some((t) => tr[t].n)) L.push("[성격 Big Five, 1~5] " + TRAIT_ORDER.filter((t) => tr[t].n).map((t) => TRAITS[t].name + " " + tr[t].score.toFixed(1) + "(" + LVL_KO[lvl(tr[t].score)] + (tr[t].hi - tr[t].lo >= 0.5 ? ", 상황에 따라 " + tr[t].lo.toFixed(1) + "~" + tr[t].hi.toFixed(1) : "") + ")").join(", "));
   const vs = valueScores(P).filter((v) => v.n);
-  if (vs.length) L.push("[가치 우선순위 · 딜레마 " + Object.keys(P.values.picks).length + "개 선택 기준] " + vs.map((v, i) => (i + 1) + "." + VAL_BY[v.id].name + "(" + v.wins + "/" + v.n + ")").join(" "));
+  if (vs.length) L.push("[가치 우선순위 · 딜레마 " + Object.keys(P.values.picks).length + "개 선택 기준] " + vs.map((v, i) => (i + 1) + "." + VAL_BY[v.id].name + "(" + fmtW(v.wins) + "/" + v.n + ")").join(" "));
+  const sit = situational(P);
+  if (sit.length) L.push("[상황에 따라 달라지는 모습 — 한 점으로 단정하지 말 것]\n" + sit.map((x) => "- " + x).join("\n"));
   if (P.prior && P.prior.valuesTop3) L.push("[이전에 직접 고른 가치 Top3] " + P.prior.valuesTop3.map((id) => VAL_BY[id]?.name || id).join(", "));
   const el = energyLists(P);
   if (el.c.length || el.d.length) L.push("[에너지] 충전: " + (el.c.map((a) => a.t).join(", ") || "-") + " / 방전: " + (el.d.map((a) => a.t).join(", ") || "-"));
@@ -96,14 +108,14 @@ async function aiJSON(prompt, opts) {
   }
 }
 
-const STYLE_RULES = "한국어로 쓰세요. 담백하고 구체적으로. 칭찬·과장·상담사 말투 금지. 사용자의 응답·메모에 있는 근거만 사용하고 추측으로 사실을 만들지 마세요. 진단하거나 단정하지 말고 '~로 보인다', '~일 수 있다' 수준으로.";
+const STYLE_RULES = "한국어로 쓰세요. 상황에 따라 달라진다고 답한 항목은 한 점으로 단정하지 말고 조건과 함께 해석하세요. 담백하고 구체적으로. 칭찬·과장·상담사 말투 금지. 사용자의 응답·메모에 있는 근거만 사용하고 추측으로 사실을 만들지 마세요. 진단하거나 단정하지 말고 '~로 보인다', '~일 수 있다' 수준으로.";
 
 function chapterFocus(P, id) {
   switch (id) {
     case "basics": return "제원: " + JSON.stringify(P.basics);
     case "wheel": return "라이프 휠(만족 0~10, 중요 1~5, 우선순위=중요×2−만족): " + wheelStats(P).map((w) => w.name + " 만족" + w.sat + " 중요" + w.imp + " 우선순위" + w.gap + (w.note ? " 메모:" + cut(w.note, 80) : "")).join("; ");
-    case "ipip": { const t = ipipScores(P); return "Big Five(1~5): " + TRAIT_ORDER.map((k) => TRAITS[k].name + " " + (t[k].score ?? 0).toFixed(2)).join(", "); }
-    case "values": return "딜레마 선택: " + DILEMMAS.map((d, i) => { const p = P.values.picks[i]; return p ? "「" + d.q + "」→ " + (p === "a" ? d.a[1] : d.b[1]) : null; }).filter(Boolean).join(" / ") + "\n가치 점수: " + valueScores(P).map((v) => VAL_BY[v.id].name + " " + v.wins + "/" + v.n).join(", ");
+    case "ipip": { const t = ipipScores(P); const sit = situational(P).filter((x) => x.startsWith("「")); return "Big Five(1~5): " + TRAIT_ORDER.map((k) => TRAITS[k].name + " " + (t[k].score ?? 0).toFixed(2) + (t[k].hi - t[k].lo >= 0.5 ? "(범위 " + t[k].lo.toFixed(1) + "~" + t[k].hi.toFixed(1) + ")" : "")).join(", ") + (sit.length ? "\n상황에 따라 달라지는 문항:\n" + sit.join("\n") : ""); }
+    case "values": return "딜레마 선택: " + DILEMMAS.map((d, i) => { const p = P.values.picks[i]; const s = (P.values.str || {})[i]; return p ? "「" + d.q + "」→ " + (p === "m" ? "상황에 따라" + ((P.values.notes || {})[i] ? "(" + P.values.notes[i] + ")" : "") : (p === "a" ? d.a[1] : d.b[1]) + (s === 1 ? " 쪽에 가까움" : "")) : null; }).filter(Boolean).join(" / ") + "\n가치 점수: " + valueScores(P).map((v) => VAL_BY[v.id].name + " " + v.wins + "/" + v.n).join(", ");
     case "energy": { const el = energyLists(P); const d = discTally(P); const c = chrono(P); return "충전: " + el.c.map((a) => a.t).join(", ") + "\n보통: " + el.n.map((a) => a.t).join(", ") + "\n방전: " + el.d.map((a) => a.t).join(", ") + "\n최근 몰입: " + (P.energy.flowRecent || "-") + "\n마지막 몰입: " + (P.energy.flowLast || "-") + "\n어릴 때: " + (P.energy.flowChild || "-") + "\n리듬: " + (c ? c.label : "-") + "\nDISC: D" + d.t.D + " I" + d.t.I + " S" + d.t.S + " C" + d.t.C; }
     case "loves": return LOVE_CATS.map((c) => { const x = P.loves.cats[c.id]; return c.name + " [" + (x.subs || []).join(",") + "] " + (x.items || []).map((i) => i.name + (i.why ? "(" + cut(i.why, 60) + ")" : "")).join(", "); }).join("\n");
     case "thoughts": return P.tree.nodes.filter((n) => n.kind !== "word").map((n) => treePath(P, n) + " | 상태:" + ((TH_STATUS.find((x) => x[0] === n.status) || [0, "미검토"])[1]) + " | 비중:" + (n.weight || "-") + " | 메모:" + cut(n.memo, 90) + " | 지금:" + cut(n.now, 90)).join("\n");
@@ -177,7 +189,7 @@ function interviewRules(P, topic) {
     focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ec.length ? ". Records에서 아직 빈 분류: " + ec.map((c) => c.name).join(", ") : "") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
   } else focus = "사용자가 고른 주제: " + (TOPICS.find((t) => t[0] === topic) || [0, "자유"])[1] + ". 이 분류에서 아직 비어 있거나 오래된 것을 우선.";
   return "당신은 자기 이해 도구 'Atlas'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
-    "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 건강·의료, 재정·보험 같은 민감한 정보도 기록 대상이다. 필요하면 구체적인 수치와 날짜까지 묻되, 사용자가 원하지 않으면 바로 넘어간다.\n- 진단하거나 성격을 단정하지 않는다.\n" +
+    "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 건강·의료, 재정·보험 같은 민감한 정보도 기록 대상이다. 필요하면 구체적인 수치와 날짜까지 묻되, 사용자가 원하지 않으면 바로 넘어간다.\n- 진단하거나 성격을 단정하지 않는다.\n- 이 사람은 상황에 따라 유연하게 달라지는 편일 수 있다. '상황에 따라 달라지는 모습'에 있는 항목은 한 점으로 해석하지 말고 '어떤 자리에서는 ~, 어떤 자리에서는 ~'처럼 조건을 묻는다(예: '분위기를 띄우게 되는 자리와 조용해지는 자리는 각각 어떤 곳인가요?').\n" +
     "[이번 인터뷰 초점] " + focus + "\n\n[프로필 요약]\n" + digest(P, S.aiLite ? { facts: 20 } : { facts: 50, log: 6 });
 }
 /* format goes last so Claude answers in JSON rather than prose */

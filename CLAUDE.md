@@ -11,6 +11,7 @@ claude.ai Artifact로 배포된다: https://claude.ai/artifact/AfkbQn3BB16ocdAap
 - `02_backend.js` — 호스트 연결 층. 저장(loadAll/save), AI(aiJSON), 파일 저장(download)을 여기서만 호출한다. 독립 앱으로 옮길 때 이 파일만 바꾼다. 런타임이 없으면 localStorage로 동작.
 - `src/js/*.js` — 번호·이름 순서로 이어 붙여 하나의 IIFE(모듈 없음, 전역 공유). `13_app`이 셸·라우터·이벤트 위임(`data-act`, `data-bind`, `data-go`)·액션.
 - 렌더링: 뷰 함수가 HTML 문자열 → `#page` innerHTML 교체. 텍스트 입력은 `data-bind`로 상태만 갱신(포커스 유지). `data-rerender`는 change 때 다시 그림.
+- 상황에 따라 달라지는 답(사용자 요청 2026-09): 성격 문항은 한 점(숫자) 또는 범위 `{lo, hi}`(`ipipRange`, 점수는 중간값, 띠로 표시, 메모 `ipip.notes`). 딜레마·DISC는 `a|b|m` + 강도 `values.str`/`energy.discStr`(2 확실, 1 가까움, m 상황에 따라=0.5씩, `leanW`) + 메모. `situational()`이 AI 요약·인터뷰·Pack에 "한 점으로 단정하지 말 것"으로 넘긴다. 이론적 근거: Fleeson(성격=상태의 분포), Mischel·Shoda(만약-그러면 패턴).
 - 디자인: Atlas 팔레트(옅은 회녹 종이, 슬레이트 잉크, 딥 틸 강조, 황토 주의), 제목 Gowun Batang, 본문 IBM Plex Sans KR, 숫자 Plex Mono. 판 번호는 "N판"(`revStr`).
 
 ## 빌드 / 테스트 / 배포
@@ -19,7 +20,7 @@ claude.ai Artifact로 배포된다: https://claude.ai/artifact/AfkbQn3BB16ocdAap
   `seed/seed_owner.json`이 없으면(git 클론 직후) 시드 없이 돈다: `mobile|edge|heal`은 통과, `all`은 시드 항목을 클릭하므로 시드가 있어야 한다.
   클라우드 세션: `pip install playwright` 후 `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (`playwright install` 금지).
   sync Playwright에서는 `time.sleep` 대신 `page.wait_for_timeout`을 써야 route 핸들러가 돈다.
-  `python3 test/run.py atlas` — v3→v4 이전, 이전 확인, 원장, 생각 나무, 팩, 엑셀 왕복, 주간 질문, 새로고침 복원.
+  `python3 test/run.py flex` — 범위·기울기·상황에 따라 답과 AI 전달. `python3 test/run.py atlas` — v3→v4 이전, 이전 확인, 원장, 생각 나무, 팩, 엑셀 왕복, 주간 질문, 새로고침 복원.
 - 배포: Artifact 도구로 같은 URL에 publish(`url` 지정). capabilities:
   `{"db":{"rules":[{"path":"seed","read":"owner","write":"owner"},{"path":"profile","read":"owner","write":"owner"}]},"sample":{},"user":{},"downloads":true}`
 
