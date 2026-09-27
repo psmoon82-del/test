@@ -698,6 +698,19 @@ h3{font-size:15px}
 @media (max-width:640px){.pair5{grid-template-columns:1fr}}
 .track .band{position:absolute;top:-2px;bottom:-2px;border-radius:6px;background:color-mix(in srgb,var(--c-traits) 30%,transparent);border:1.5px solid var(--c-traits)}
 .trait .v small.rng{display:block;font-size:10px;color:var(--ink-3)}
+.tree-ai{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 14px;margin-bottom:12px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+.tree-ai > div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tree-ai .muted{font-size:12.5px;line-height:1.45}
+.tree-ai .btn{flex:none}
+@media (max-width:600px){.tree-ai{flex-direction:column;align-items:stretch}}
+.tn-ai{flex:none;font:600 9.5px/1 var(--f-mono);letter-spacing:.04em;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 4px}
+.tn.fresh:not(.on){background:color-mix(in srgb,var(--accent-2) 55%,transparent)}
+.tn-more summary{cursor:pointer;font-size:12.5px;color:var(--ink-3)}
+.tree-rej{margin-top:16px;font-size:13px}
+.tree-rej summary{cursor:pointer;color:var(--ink-3)}
+.tree-rej-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tree-rej-list .chip{display:inline-flex;align-items:center;gap:4px}
+.tree-rej-list .btn{padding:2px 6px;font-size:11.5px}
 
 </style>
 <div id="app"></div>
@@ -1147,7 +1160,7 @@ function blankProfile() {
     timeline: { events: [] },
     ledger: [],
     hints: {}, prior: {}, progressLog: [], done: {}, chapterAt: {},
-    meta: { migration: null, exports: [] },
+    meta: { migration: null, exports: [], treeRejected: [] },
   };
 }
 function ensureShape(P) {
@@ -1199,7 +1212,8 @@ function areaFor(label, oldGroup) {
   return GROUP_TO_AREA[oldGroup] || null;
 }
 function ensureTreeAreas(P) {
-  if (P.meta.treeStd) return false;
+  const merged = treeMergeNow(P);
+  if (P.meta.treeStd) return merged;
   const ns = P.tree.nodes, now = nowISO();
   const oldRoots = ns.filter((n) => !n.parent && !n.area);
   TREE_AREAS.forEach((a, i) => { if (!ns.some((n) => n.id === "area_" + a.id)) ns.push({ id: "area_" + a.id, parent: null, area: a.id, label: a.name, memo: "", now: "", status: null, weight: null, order: i }); });
@@ -1220,6 +1234,13 @@ function ensureTreeAreas(P) {
   TREE_AREAS.forEach((a) => treeChildrenOf(P, "area_" + a.id).forEach((n, i) => (n.order = i)));
   P.meta.treeStd = 1;
   if (moves.length) P.meta.treeMove = { at: now, reviewed: false, moves };
+  return true;
+}
+/* one memo per topic (owner decision 2026-09): fold the old "지금의 생각" into the memo once */
+function treeMergeNow(P) {
+  if (P.meta.treeMemo) return false;
+  P.tree.nodes.forEach((n) => { if (n.now) { n.memo = n.memo ? n.memo + "\n\n지금: " + n.now : n.now; n.now = ""; } });
+  P.meta.treeMemo = 1;
   return true;
 }
 function treeChildrenOf(P, pid) { return P.tree.nodes.filter((n) => n.parent === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
@@ -1646,6 +1667,25 @@ async function aiExtractFromRecord(rec) {
     '\n\n이미 알려진 사실과 겹치지 않는 것만, 기록에 실제로 쓰인 내용만. JSON 하나로만 답하세요: {"facts": [{"cat": "' + CAT_IDS.join("|") + '", "label": "짧은 항목명(선택)", "text": "3인칭 한 문장"}]} (최대 4개, 없으면 빈 배열)';
   const r = await aiJSON(prompt, { modelTier: "quick" });
   return (r && Array.isArray(r.facts) ? r.facts : []).filter((f) => f && f.text).map((f) => ({ cat: CAT_BY[f.cat] ? f.cat : AREA_TO_CAT[f.area] || "etc", label: String(f.label || ""), text: String(f.text) })).slice(0, 4);
+}
+
+/* think tree auto-fill: topics the owner seems to be carrying, filed under the standard areas.
+   talk = recent interview turns to draw from (interview mode), else the whole profile. */
+async function aiTreeTopics(talk) {
+  const P = S.P, max = talk ? 5 : 12;
+  const have = P.tree.nodes.filter((n) => !n.area && n.kind !== "word").map((n) => "- " + treePath(P, n)).join("\n") || "(없음)";
+  const gone = (P.meta.treeRejected || []).map((r) => r.label).join(", ") || "(없음)";
+  const prompt = "당신은 한 사람의 머릿속을 정리해 주는 편집자입니다. 아래 자료를 읽고, 이 사람이 요즘 마음을 쓰고 있는 주제를 생각 나무에 넣을 수 있게 뽑으세요.\n" + STYLE_RULES +
+    "\n\n[프로필과 Records]\n" + digest(P, talk ? { facts: 30 } : { full: true, facts: 60, log: 12 }) +
+    (talk ? "\n\n[이번 AI 인터뷰 대화 — 여기서 드러난 주제를 우선]\n" + talk : "") +
+    "\n\n[이미 나무에 있는 주제 (가지 › 주제)]\n" + have +
+    "\n\n[사용자가 뺀 주제 — 다시 제안하지 말 것] " + gone +
+    "\n\n[가지] " + TREE_AREAS.map((a) => a.id + "=" + a.name + "(" + a.d + ")").join(", ") +
+    "\n\n규칙:\n- 주제 이름은 2~12자 명사구(예: 이직 고민, 아이 교육, 간 수치 관리). 문장이나 감상 금지.\n- 자료에 근거가 있는 것만. 한 번 스친 사실보다 반복되거나 무게가 있는 것.\n- 이미 있는 주제·뺀 주제와 같거나 비슷하면 넣지 않는다. 기존 주제의 하위로 들어갈 만하면 under에 그 주제 이름을 그대로 적는다.\n- memo는 왜 이 주제인지 근거를 담은 한두 문장, '~다' 체.\n- weight는 마음을 차지하는 정도: 1 가볍게, 2 자주, 3 크게.\n- 최대 " + max + "개. 없으면 빈 배열." +
+    '\n\nJSON 하나로만 답하세요: {"topics": [{"area": "' + TREE_AREAS.map((a) => a.id).join("|") + '", "label": "주제 이름", "under": "기존 주제 이름 또는 빈 문자열", "memo": "근거 한두 문장", "weight": 1}]}';
+  const r = await aiJSON(prompt, { modelTier: talk ? "default" : "complex" });
+  if (!r || !Array.isArray(r.topics)) throw { code: "invalid_json" };
+  return r.topics.filter((t) => t && t.label).slice(0, max).map((t) => ({ area: TREE_AREAS.some((a) => a.id === t.area) ? t.area : "meaning", label: cut(t.label, 24), under: String(t.under || ""), memo: String(t.memo || ""), weight: [1, 2, 3].includes(+t.weight) ? +t.weight : 1 }));
 }
 
 /* ---------------- interview ---------------- */
@@ -2279,38 +2319,77 @@ function treeAdd(parent, label) {
   S.P.tree.nodes.push(n);
   return n;
 }
+/* same topic regardless of spacing, case or punctuation */
+function treeKey(label) { return String(label || "").toLowerCase().replace(/[\s·.,!?'"()\[\]-]+/g, ""); }
+function treeAreaOf(n) { let x = n, g = 0; while (x && x.parent && g++ < 20) x = treeNode(x.parent); return x && x.area ? x.area : null; }
+/* deleted topics are remembered so auto-fill does not bring them back */
+function treeReject(nodes) {
+  const rj = S.P.meta.treeRejected || (S.P.meta.treeRejected = []), at = nowISO();
+  nodes.filter((n) => !n.area && n.kind !== "word").forEach((n) => {
+    const k = treeKey(n.label); if (!k || rj.some((r) => r.k === k)) return;
+    rj.push({ k, label: n.label, area: treeAreaOf(n), memo: n.memo || "", at });
+  });
+  if (rj.length > 300) rj.splice(0, rj.length - 300);
+}
+/* ask Claude for topics and put them straight into the tree; the owner edits or deletes afterwards */
+async function treeFill(talk) {
+  const P = S.P;
+  const topics = await aiTreeTopics(talk);
+  const seen = new Set(P.tree.nodes.map((n) => treeKey(n.label)).concat((P.meta.treeRejected || []).map((r) => r.k)));
+  const byLabel = (l) => { const k = treeKey(l); return k ? P.tree.nodes.find((n) => !n.area && treeKey(n.label) === k) : null; };
+  const added = [], day = nowISO().slice(0, 10);
+  topics.forEach((t) => {
+    const k = treeKey(t.label); if (!k || seen.has(k)) return;
+    let par = t.under && byLabel(t.under);
+    if (!par) {
+      par = treeNode("area_" + t.area);
+      if (!par) { const a = TREE_AREAS.find((x) => x.id === t.area); par = { id: "area_" + a.id, parent: null, area: a.id, label: a.name, memo: "", now: "", status: null, weight: null, order: treeChildren(P, null).length }; P.tree.nodes.push(par); }
+    }
+    const n = treeAdd(par.id, t.label);
+    Object.assign(n, { memo: t.memo, weight: t.weight, ai: true, src: "AI 정리 " + day + (talk ? " · 인터뷰" : "") });
+    seen.add(k); added.push(n.id);
+  });
+  if (added.length) { S.ui.treeNew = added; needDirty(); }
+  return added.length;
+}
 function treeDepth(n) { let d = 0, x = n; while (x && x.parent && d < 20) { x = treeNode(x.parent); d++; } return d; }
 
 function treeEditor(compact) {
   const P = S.P, ns = P.tree.nodes, sel = S.ui.treeSel && treeNode(S.ui.treeSel);
   const toolbar = '<div class="tree-bar"><span class="seg3" role="group" aria-label="보기">' + [["outline", "개요"], ["mind", "마인드맵"]].map(([v, l]) => '<button class="' + (S.ui.treeView === v ? "on" : "") + '" data-act="treeView" data-v="' + v + '">' + l + "</button>").join("") + "</span>" +
     '<span class="row" style="gap:6px;flex-wrap:nowrap;flex:1;min-width:0"><input class="input" id="newNode" placeholder="' + (sel ? "'" + esc(cut(sel.label, 14)) + "' 아래에 추가" : "새 가지 이름") + '" style="min-width:0"><button class="btn primary" data-act="treeAdd">' + I.plus + (sel ? "하위 추가" : "가지 추가") + "</button></span></div>";
+  const busy = S.ui.busy.tree, can = aiAvailable();
+  const aiBar = '<div class="tree-ai"><div><b>AI로 채우기</b><span class="muted">Records·인터뷰·기록을 읽고 요즘 마음 쓰는 주제를 가지 아래에 바로 넣어요. 필요 없는 건 지우면 다시 제안하지 않아요.</span></div>' +
+    (can ? '<button class="btn accent" data-act="treeFill"' + (busy ? " disabled" : "") + ">" + (busy ? '<span class="spinner"></span>정리하는 중' : I.spark + "채우기") + "</button>" : '<span class="muted" style="font-size:12px">이 화면에서는 Claude 연결을 쓸 수 없어요.</span>') + "</div>" +
+    (S.ui.treeErr ? '<p class="banner">' + esc(S.ui.treeErr) + "</p>" : "");
   if (!ns.length) {
-    return toolbar + '<div class="tree-empty"><p>아직 나무가 없어요. 삶의 아홉 영역을 큰 가지로 깔고, 그 아래에 주제를 채워 보세요.</p><div><button class="btn primary" data-act="treeStd">표준 가지 깔기</button></div></div>';
+    return aiBar + toolbar + '<div class="tree-empty"><p>아직 나무가 없어요. 삶의 아홉 영역을 큰 가지로 깔고, 그 아래에 주제를 채워 보세요.</p><div><button class="btn primary" data-act="treeStd">표준 가지 깔기</button></div></div>';
   }
+  const fresh = new Set(S.ui.treeNew || []);
   const outline = (pid, depth) => treeChildren(P, pid).map((n) => {
     const kids = treeChildren(P, n.id), on = sel && sel.id === n.id;
     const area = n.area && !n.parent ? TREE_AREAS.find((a) => a.id === n.area) : null;
     const st = n.status ? '<i class="tn-st ' + n.status + '" title="' + esc((TH_STATUS.find((x) => x[0] === n.status) || [0, ""])[1]) + '"></i>' : "";
-    return '<li><div class="tn' + (on ? " on" : "") + (n.kind === "word" ? " word" : "") + '" style="--d:' + depth + '"><button class="tn-l" data-act="treeSel" data-id="' + n.id + '">' + st + "<span>" + esc(n.label) + "</span>" + (area && !kids.length ? '<span class="tn-hint">' + esc(area.d) + "</span>" : "") + (n.weight ? '<span class="tn-w">' + "●".repeat(n.weight) + "</span>" : "") + (n.now ? '<span class="tn-note" title="지금의 생각이 있어요">✎</span>' : "") + "</button>" +
+    return '<li><div class="tn' + (on ? " on" : "") + (fresh.has(n.id) ? " fresh" : "") + (n.kind === "word" ? " word" : "") + '" style="--d:' + depth + '"><button class="tn-l" data-act="treeSel" data-id="' + n.id + '">' + st + "<span>" + esc(n.label) + "</span>" + (area && !kids.length ? '<span class="tn-hint">' + esc(area.d) + "</span>" : "") + (n.weight ? '<span class="tn-w">' + "●".repeat(n.weight) + "</span>" : "") + (n.memo || n.now ? '<span class="tn-note" title="메모가 있어요">✎</span>' : "") + (n.ai ? '<span class="tn-ai" title="AI가 넣은 주제. 고치면 표시가 사라져요">AI</span>' : "") + "</button>" +
       (on ? '<span class="tn-ops">' + [["treeUp", "위로", "↑"], ["treeDown", "아래로", "↓"], ["treeOut", "내어쓰기", "←"], ["treeIn", "들여쓰기", "→"]].map(([a, t, g]) => '<button class="btn sm ghost" data-act="' + a + '" title="' + t + '" aria-label="' + t + '">' + g + "</button>").join("") + "</span>" : "") + "</div>" +
       (kids.length ? "<ul>" + outline(n.id, depth + 1) + "</ul>" : "") + "</li>";
   }).join("");
   const main = S.ui.treeView === "mind" ? '<div class="tree-mind">' + treeMindSVG(P) + "</div>" : '<ul class="tree">' + outline(null, 0) + "</ul>";
-  let detail = '<p class="muted" style="font-size:13px">주제를 누르면 여기에서 이름, 메모, 지금의 생각, 무게를 적을 수 있어요.</p>';
+  let detail = '<p class="muted" style="font-size:13px">주제를 누르면 여기에서 이름과 메모를 고칠 수 있어요.</p>';
   if (sel) {
-    const i = ns.indexOf(sel), kids = treeDesc(sel.id).length;
+    const i = ns.indexOf(sel), kids = treeDesc(sel.id).length, more = S.ui.treeMore || sel.status || sel.weight;
     detail = '<div class="stack" style="gap:12px"><div class="crumbs" style="margin:0">' + esc(treePath(P, sel)) + "</div>" +
       '<div class="field"><label for="tn_label">이름</label><input class="input" id="tn_label" data-bind="P.tree.nodes.' + i + '.label" data-rerender="1" value="' + esc(sel.label) + '"></div>' +
+      '<div class="field"><label for="tn_memo">메모' + (sel.src ? ' <span class="muted" style="font-weight:400">· ' + esc(sel.src) + "</span>" : "") + '</label><textarea class="input" id="tn_memo" rows="5" data-bind="P.tree.nodes.' + i + '.memo" placeholder="이 주제에 대해 떠오르는 것, 지금의 생각">' + esc(sel.memo || "") + "</textarea></div>" +
+      '<details class="tn-more"' + (more ? " open" : "") + '><summary>상태·무게</summary><div class="stack" style="gap:10px;margin-top:10px">' +
       '<div class="field"><span class="flabel">지금 이 주제는</span><div class="seg3" role="group">' + TH_STATUS.map(([v, l]) => '<button class="' + (sel.status === v ? "on" : "") + '" data-act="thStatus" data-v="' + v + '">' + l + "</button>").join("") + "</div></div>" +
-      '<div class="field"><span class="flabel">마음을 차지하는 무게</span><div class="mini-seg">' + [[1, "가볍게"], [2, "자주"], [3, "크게"]].map(([v, l]) => '<button class="' + (sel.weight === v ? "on" : "") + '" data-act="thWeight" data-v="' + v + '">' + l + "</button>").join("") + "</div></div>" +
-      (sel.memo || sel.src ? '<div class="memo"><span class="yr">예전 메모' + (sel.src ? " · " + esc(sel.src) : "") + "</span>" + '<textarea class="input" rows="3" data-bind="P.tree.nodes.' + i + '.memo" aria-label="예전 메모">' + esc(sel.memo || "") + "</textarea></div>"
-        : '<div class="field"><label for="tn_memo">메모</label><textarea class="input" id="tn_memo" rows="3" data-bind="P.tree.nodes.' + i + '.memo" placeholder="이 주제에 대해 떠오르는 것">' + esc(sel.memo || "") + "</textarea></div>") +
-      '<div class="field"><label for="tn_now">지금의 생각</label><textarea class="input" id="tn_now" rows="3" data-bind="P.tree.nodes.' + i + '.now" placeholder="예전과 무엇이 같고 무엇이 달라졌나요?">' + esc(sel.now || "") + "</textarea></div>" +
+      '<div class="field"><span class="flabel">마음을 차지하는 무게</span><div class="mini-seg">' + [[1, "가볍게"], [2, "자주"], [3, "크게"]].map(([v, l]) => '<button class="' + (sel.weight === v ? "on" : "") + '" data-act="thWeight" data-v="' + v + '">' + l + "</button>").join("") + "</div></div></div></details>" +
       '<div class="row" style="justify-content:space-between"><button class="btn sm ghost" data-act="treeSel" data-id="">선택 해제</button>' +
       (S.ui.confirmDel === sel.id ? '<span class="row" style="gap:6px"><span class="muted" style="font-size:12px">' + (kids ? "하위 " + kids + "개도 함께 지워요." : "") + '</span><button class="btn sm signal" data-act="treeDel">삭제</button><button class="btn sm ghost" data-act="recDelCancel">취소</button></span>' : '<button class="btn sm ghost" data-act="recDelAsk" data-id="' + sel.id + '">' + I.trash + "삭제</button>") + "</div></div>";
   }
-  return toolbar + '<div class="tree-wrap' + (compact ? " compact" : "") + '"><div class="tree-main">' + main + '</div><aside class="tree-detail sheet pad">' + detail + "</aside></div>";
+  const rj = P.meta.treeRejected || [];
+  const rejected = rj.length ? '<details class="tree-rej"><summary>지운 주제 ' + rj.length + '개 · AI가 다시 제안하지 않아요</summary><div class="tree-rej-list">' + rj.map((r, k) => '<span class="chip">' + esc(r.label) + '<button class="btn sm ghost" data-act="treeRestore" data-i="' + k + '">되살리기</button></span>').reverse().join("") + "</div></details>" : "";
+  return aiBar + toolbar + '<div class="tree-wrap' + (compact ? " compact" : "") + '"><div class="tree-main">' + main + '</div><aside class="tree-detail sheet pad">' + detail + "</aside></div>" + rejected;
 }
 
 /* radial mind map: leaves spread evenly around the circle, parents sit at their children's mean angle */
@@ -2351,7 +2430,7 @@ function treeMindSVG(P) {
   return '<svg viewBox="0 0 ' + W + " " + W + '" width="' + W + '" style="max-width:none;display:block" role="img" aria-label="생각 나무 마인드맵">' + g + "</svg>";
 }
 function viewTree() {
-  return '<div class="page-head"><div><div class="eyebrow">Think tree · 생각 나무</div><h1>생각 나무</h1><p class="lede">머릿속을 차지하는 주제를 가지처럼 뻗어 그리는 곳이에요. 주제를 누른 뒤 위아래로 옮기거나, 들여쓰기로 다른 주제 아래에 넣을 수 있어요.</p></div></div>' + treeEditor(false);
+  return '<div class="page-head"><div><div class="eyebrow">Think tree · 생각 나무</div><h1>생각 나무</h1><p class="lede">머릿속을 차지하는 주제를 가지처럼 뻗어 그리는 곳이에요. “AI로 채우기”로 초안을 만든 뒤, 주제를 눌러 이름과 메모를 고치거나 옮기거나 지우면 돼요.</p></div></div>' + treeEditor(false);
 }
 /* keep the mind map where the viewer left it across re-renders; center it the first time */
 function afterTree() {
@@ -2385,7 +2464,7 @@ function viewInterview() {
   }
   const lastUser = turns.length && turns[turns.length - 1].role === "user";
   const inputDisabled = busy || !aiAvailable() || !turns.length;
-  const chat = '<section class="sheet chat lift"><div class="chat-log" id="chatLog">' + log + '</div><div class="chat-in"><div class="row"><textarea class="input" id="ivInput" rows="2" placeholder="' + (turns.length ? "생각나는 대로 답해 주세요. Enter로 보내고 Shift+Enter로 줄을 바꿔요." : "먼저 인터뷰를 시작해 주세요.") + '" ' + (inputDisabled ? "disabled" : "") + '>' + esc(S.ui.ivDraft || "") + '</textarea><button class="btn primary" data-act="ivSend" ' + (inputDisabled ? "disabled" : "") + ' aria-label="보내기">' + I.send + '</button></div><div class="row" style="justify-content:space-between"><span class="muted" style="font-size:11.5px">' + (lastUser && !busy ? "마지막 메시지에 아직 답이 없어요." : "대화는 나만 볼 수 있게 저장돼요.") + '</span><span class="row" style="gap:6px">' + (turns.length ? '<button class="btn sm ghost" data-act="ivNewTopic">주제 바꿔 새 질문</button><button class="btn sm ghost" data-act="ivClear">대화 비우기</button>' : "") + "</span></div></div></section>";
+  const chat = '<section class="sheet chat lift"><div class="chat-log" id="chatLog">' + log + '</div><div class="chat-in"><div class="row"><textarea class="input" id="ivInput" rows="2" placeholder="' + (turns.length ? "생각나는 대로 답해 주세요. Enter로 보내고 Shift+Enter로 줄을 바꿔요." : "먼저 인터뷰를 시작해 주세요.") + '" ' + (inputDisabled ? "disabled" : "") + '>' + esc(S.ui.ivDraft || "") + '</textarea><button class="btn primary" data-act="ivSend" ' + (inputDisabled ? "disabled" : "") + ' aria-label="보내기">' + I.send + '</button></div><div class="row" style="justify-content:space-between"><span class="muted" style="font-size:11.5px">' + (S.ui.ivTree ? esc(S.ui.ivTree) + ' <a href="#tree" data-go="tree">보기</a>' : lastUser && !busy ? "마지막 메시지에 아직 답이 없어요." : "대화는 나만 볼 수 있게 저장돼요.") + '</span><span class="row" style="gap:6px">' + (turns.length ? '<button class="btn sm" data-act="ivTree"' + (S.ui.busy.tree || busy ? " disabled" : "") + ">" + (S.ui.busy.tree ? '<span class="spinner"></span>정리하는 중' : "마치고 생각 나무에 반영") + '</button><button class="btn sm ghost" data-act="ivNewTopic">주제 바꿔 새 질문</button><button class="btn sm ghost" data-act="ivClear">대화 비우기</button>' : "") + "</span></div></div></section>";
 
   const gaps = gapList(P).slice(0, 6);
   const sessionFacts = P.ledger.filter((f) => f.src === "interview");
@@ -3265,7 +3344,9 @@ document.addEventListener("input", (e) => {
   touchEntry(el.dataset.bind);
   markDirty();
 });
-function touchEntry(bind) { const m = /^P\.ledger\.(\d+)\./.exec(bind || ""); if (m && S.P.ledger[+m[1]]) { const e = S.P.ledger[+m[1]]; e.up = nowISO(); delete e.mig; } }
+function touchEntry(bind) { const m = /^P\.ledger\.(\d+)\./.exec(bind || ""); if (m && S.P.ledger[+m[1]]) { const e = S.P.ledger[+m[1]]; e.up = nowISO(); delete e.mig; } 
+  const t = /^P\.tree\.nodes\.(\d+)\./.exec(bind || ""); if (t && S.P.tree.nodes[+t[1]]) delete S.P.tree.nodes[+t[1]].ai;
+}
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.id === "xlsxFile" && el.files && el.files[0]) { ACT.importFile(el.files[0]); el.value = ""; return; }
@@ -3354,14 +3435,28 @@ const ACT = {
   treeView: (a) => { S.ui.treeView = a.dataset.v; S.ui.mindScroll = null; render(); },
   treeSel: (a) => { const m = $(".tree-mind"); if (m) S.ui.mindScroll = [m.scrollLeft, m.scrollTop]; S.ui.treeSel = a.dataset.id || null; S.ui.confirmDel = null; render(); },
   treeAdd: () => { const el = $("#newNode"); const v = el && el.value.trim(); if (!v) { el && el.focus(); return; } const n = treeAdd(S.ui.treeSel, v); if (!S.ui.treeSel) S.ui.treeSel = n.id; needDirty(); render(); const ne = $("#newNode"); if (ne) ne.focus(); },
+  treeFill: async () => {
+    if (S.ui.busy.tree) return;
+    S.ui.busy.tree = true; S.ui.treeErr = null; render();
+    try { const k = await treeFill(); toast(k ? "주제 " + k + "개를 넣었어요. 필요 없는 건 지우세요." : "새로 넣을 주제를 찾지 못했어요."); }
+    catch (e) { S.ui.treeErr = aiErrMsg(e); }
+    S.ui.busy.tree = false; render();
+  },
+  treeRestore: (a) => {
+    const rj = S.P.meta.treeRejected || [], r = rj[+a.dataset.i]; if (!r) return;
+    rj.splice(+a.dataset.i, 1);
+    const par = r.area && treeNode("area_" + r.area);
+    const n = treeAdd(par ? par.id : null, r.label); n.memo = r.memo || "";
+    S.ui.treeSel = n.id; needDirty(); render(); toast("'" + cut(r.label, 20) + "'를 되살렸어요.");
+  },
   treeStd: () => { S.P.meta.treeStd = 0; ensureTreeAreas(S.P); needDirty(); render(); },
   treeUp: () => treeMove(-1),
   treeDown: () => treeMove(1),
   treeIn: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const sibs = treeChildren(S.P, n.parent); const k = sibs.indexOf(n); if (k < 1) { toast("바로 위에 같은 층 주제가 있어야 들여쓸 수 있어요."); return; } const np = sibs[k - 1]; n.parent = np.id; n.order = treeChildren(S.P, np.id).length; treeNorm(sibs[0].parent); needDirty(); render(); },
   treeOut: () => { const n = treeNode(S.ui.treeSel); if (!n || !n.parent) return; const par = treeNode(n.parent); const old = n.parent; n.parent = par ? par.parent : null; n.order = (par ? par.order : 0) + 0.5; treeNorm(old); treeNorm(n.parent); needDirty(); render(); },
-  treeDel: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const gone = new Set([n.id].concat(treeDesc(n.id).map((x) => x.id))); S.P.tree.nodes = S.P.tree.nodes.filter((x) => !gone.has(x.id)); treeNorm(n.parent); S.ui.treeSel = n.parent || null; S.ui.confirmDel = null; needDirty(); render(); toast("'" + cut(n.label, 20) + "'" + (gone.size > 1 ? " 외 " + (gone.size - 1) + "개" : "") + "를 지웠어요."); },
-  thStatus: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; n.status = n.status === a.dataset.v ? null : a.dataset.v; needDirty(); render(); },
-  thWeight: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; n.weight = n.weight === +a.dataset.v ? null : +a.dataset.v; needDirty(); render(); },
+  treeDel: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const gone = new Set([n.id].concat(treeDesc(n.id).map((x) => x.id))); treeReject(S.P.tree.nodes.filter((x) => gone.has(x.id))); S.P.tree.nodes = S.P.tree.nodes.filter((x) => !gone.has(x.id)); treeNorm(n.parent); S.ui.treeSel = n.parent || null; S.ui.confirmDel = null; needDirty(); render(); toast("'" + cut(n.label, 20) + "'" + (gone.size > 1 ? " 외 " + (gone.size - 1) + "개" : "") + "를 지웠어요."); },
+  thStatus: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; S.ui.treeMore = true; delete n.ai; n.status = n.status === a.dataset.v ? null : a.dataset.v; needDirty(); render(); },
+  thWeight: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; S.ui.treeMore = true; delete n.ai; n.weight = n.weight === +a.dataset.v ? null : +a.dataset.v; needDirty(); render(); },
   actAdd: () => { const el = $("#newAct"); const v = el && el.value.trim(); if (!v) return; S.P.energy.custom.push({ id: uid("a"), t: v }); needDirty(); render(); const ne = $("#newAct"); if (ne) ne.focus(); },
   actDel: (a) => { const id = a.dataset.id; S.P.energy.custom = S.P.energy.custom.filter((x) => x.id !== id); delete S.P.energy.acts[id]; needDirty(); render(); },
   /* ledger */
@@ -3426,18 +3521,31 @@ const ACT = {
   evEdit: (a) => { S.ui.editEvent = a.dataset.id; if (S.ui.view !== "gantt") goView("gantt"); else { render(); window.scrollTo({ top: 0, behavior: "smooth" }); } },
   evEditClose: () => { S.ui.editEvent = null; render(); },
   insight: (a) => runInsight(a.dataset.id),
-  ivStart: () => { S.CHAT.turns = []; ivRun(true); },
+  ivStart: () => { S.CHAT.turns = []; S.CHAT.treeAt = 0; S.ui.ivTree = null; ivRun(true); },
   ivSend: () => {
     const el = $("#ivInput"); const text = el && el.value.trim();
     if (!text || S.ui.busy.iv) return;
-    S.CHAT.turns.push({ role: "user", content: text, at: nowISO() }); S.ui.ivDraft = ""; markDirty(); ivRun(false);
+    S.CHAT.turns.push({ role: "user", content: text, at: nowISO() }); S.ui.ivDraft = ""; S.ui.ivTree = null; markDirty(); ivRun(false);
+  },
+  ivTree: async () => {
+    if (S.ui.busy.tree || S.ui.busy.iv) return;
+    const from = Math.min(S.CHAT.treeAt || 0, S.CHAT.turns.length);
+    const talk = S.CHAT.turns.slice(from).filter((t) => !t.meta).map((t) => (t.role === "user" ? "나: " : "Claude: ") + cut(t.content, 400)).join("\n");
+    if (!S.CHAT.turns.slice(from).some((t) => t.role === "user" && !t.meta)) { toast("생각 나무에 반영할 새 대화가 없어요."); return; }
+    S.ui.busy.tree = true; render();
+    try {
+      const k = await treeFill(talk);
+      S.CHAT.treeAt = S.CHAT.turns.length; markDirty("chat");
+      S.ui.ivTree = k ? "생각 나무에 주제 " + k + "개를 넣었어요." : "이번 대화에서 새 주제는 찾지 못했어요.";
+    } catch (e) { S.ui.ivTree = aiErrMsg(e); }
+    S.ui.busy.tree = false; render();
   },
   ivRetry: () => { const t = S.CHAT.turns; if (t.length && t[t.length - 1].role === "user") ivRun(false); else ivRun(!t.length); },
   ivTopic: (a) => { S.CHAT.topic = a.dataset.v; markDirty(); render(); toast("다음 질문부터 '" + (TOPICS.find((t) => t[0] === a.dataset.v) || [0, ""])[1] + "'에 초점을 맞춰요."); },
   ivNewTopic: () => { if (S.ui.busy.iv) return; S.CHAT.turns.push({ role: "user", content: "(이 질문은 넘어가고, 현재 초점에 맞는 다른 질문을 해 주세요)", at: nowISO(), meta: true }); markDirty(); ivRun(false); },
   ivClear: () => {
     if (!S.ui.confirmIvClear) { S.ui.confirmIvClear = true; toast("한 번 더 누르면 대화가 비워져요. 알게 된 사실은 남아요."); setTimeout(() => (S.ui.confirmIvClear = false), 3500); return; }
-    S.ui.confirmIvClear = false; S.CHAT.turns = []; S.ui.ivErr = null; markDirty(); render();
+    S.ui.confirmIvClear = false; S.CHAT.turns = []; S.CHAT.treeAt = 0; S.ui.ivErr = null; markDirty(); render();
   },
   factDel: (a) => ACT.entryDel(a),
   logType: (a) => { const t = $("#logText"); if (t) S.ui.logDraft = t.value; S.ui.newType = a.dataset.v; render(); const t2 = $("#logText"); if (t2) { t2.value = S.ui.logDraft || ""; t2.focus(); } },

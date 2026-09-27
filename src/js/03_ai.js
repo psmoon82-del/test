@@ -174,6 +174,25 @@ async function aiExtractFromRecord(rec) {
   return (r && Array.isArray(r.facts) ? r.facts : []).filter((f) => f && f.text).map((f) => ({ cat: CAT_BY[f.cat] ? f.cat : AREA_TO_CAT[f.area] || "etc", label: String(f.label || ""), text: String(f.text) })).slice(0, 4);
 }
 
+/* think tree auto-fill: topics the owner seems to be carrying, filed under the standard areas.
+   talk = recent interview turns to draw from (interview mode), else the whole profile. */
+async function aiTreeTopics(talk) {
+  const P = S.P, max = talk ? 5 : 12;
+  const have = P.tree.nodes.filter((n) => !n.area && n.kind !== "word").map((n) => "- " + treePath(P, n)).join("\n") || "(없음)";
+  const gone = (P.meta.treeRejected || []).map((r) => r.label).join(", ") || "(없음)";
+  const prompt = "당신은 한 사람의 머릿속을 정리해 주는 편집자입니다. 아래 자료를 읽고, 이 사람이 요즘 마음을 쓰고 있는 주제를 생각 나무에 넣을 수 있게 뽑으세요.\n" + STYLE_RULES +
+    "\n\n[프로필과 Records]\n" + digest(P, talk ? { facts: 30 } : { full: true, facts: 60, log: 12 }) +
+    (talk ? "\n\n[이번 AI 인터뷰 대화 — 여기서 드러난 주제를 우선]\n" + talk : "") +
+    "\n\n[이미 나무에 있는 주제 (가지 › 주제)]\n" + have +
+    "\n\n[사용자가 뺀 주제 — 다시 제안하지 말 것] " + gone +
+    "\n\n[가지] " + TREE_AREAS.map((a) => a.id + "=" + a.name + "(" + a.d + ")").join(", ") +
+    "\n\n규칙:\n- 주제 이름은 2~12자 명사구(예: 이직 고민, 아이 교육, 간 수치 관리). 문장이나 감상 금지.\n- 자료에 근거가 있는 것만. 한 번 스친 사실보다 반복되거나 무게가 있는 것.\n- 이미 있는 주제·뺀 주제와 같거나 비슷하면 넣지 않는다. 기존 주제의 하위로 들어갈 만하면 under에 그 주제 이름을 그대로 적는다.\n- memo는 왜 이 주제인지 근거를 담은 한두 문장, '~다' 체.\n- weight는 마음을 차지하는 정도: 1 가볍게, 2 자주, 3 크게.\n- 최대 " + max + "개. 없으면 빈 배열." +
+    '\n\nJSON 하나로만 답하세요: {"topics": [{"area": "' + TREE_AREAS.map((a) => a.id).join("|") + '", "label": "주제 이름", "under": "기존 주제 이름 또는 빈 문자열", "memo": "근거 한두 문장", "weight": 1}]}';
+  const r = await aiJSON(prompt, { modelTier: talk ? "default" : "complex" });
+  if (!r || !Array.isArray(r.topics)) throw { code: "invalid_json" };
+  return r.topics.filter((t) => t && t.label).slice(0, max).map((t) => ({ area: TREE_AREAS.some((a) => a.id === t.area) ? t.area : "meaning", label: cut(t.label, 24), under: String(t.under || ""), memo: String(t.memo || ""), weight: [1, 2, 3].includes(+t.weight) ? +t.weight : 1 }));
+}
+
 /* ---------------- interview ---------------- */
 function gapList(P) {
   return CH.map((c) => ({ id: c.id, name: c.name, p: P.done[c.id] ? 100 : chProgress(P, c.id) })).sort((a, b) => a.p - b.p);

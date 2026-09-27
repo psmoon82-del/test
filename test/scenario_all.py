@@ -46,7 +46,7 @@ p.click('[data-act=loveCat][data-id=food]'); time.sleep(0.2); shot(p, "12_loves_
 # thoughts
 p.click('.jr-index [data-id=thoughts]'); time.sleep(0.2); shot(p, "13_thoughts")
 p.click('.tree ul .tn-l'); p.wait_for_timeout(200); shot(p, "14_thought_item")
-p.click('[data-act=thStatus][data-v=heavy]'); p.wait_for_timeout(100); p.click('[data-act=thWeight][data-v="3"]'); p.wait_for_timeout(100)
+p.click('.tn-more summary'); p.click('[data-act=thStatus][data-v=heavy]'); p.wait_for_timeout(100); p.click('[data-act=thWeight][data-v="3"]'); p.wait_for_timeout(100)
 # wants
 p.click('.jr-index [data-id=wants]'); time.sleep(0.2); shot(p, "15_wants")
 p.click('[data-act=wantType][data-id=do]'); time.sleep(0.2); shot(p, "16_wants_do")

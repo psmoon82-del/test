@@ -86,7 +86,9 @@ document.addEventListener("input", (e) => {
   touchEntry(el.dataset.bind);
   markDirty();
 });
-function touchEntry(bind) { const m = /^P\.ledger\.(\d+)\./.exec(bind || ""); if (m && S.P.ledger[+m[1]]) { const e = S.P.ledger[+m[1]]; e.up = nowISO(); delete e.mig; } }
+function touchEntry(bind) { const m = /^P\.ledger\.(\d+)\./.exec(bind || ""); if (m && S.P.ledger[+m[1]]) { const e = S.P.ledger[+m[1]]; e.up = nowISO(); delete e.mig; } 
+  const t = /^P\.tree\.nodes\.(\d+)\./.exec(bind || ""); if (t && S.P.tree.nodes[+t[1]]) delete S.P.tree.nodes[+t[1]].ai;
+}
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.id === "xlsxFile" && el.files && el.files[0]) { ACT.importFile(el.files[0]); el.value = ""; return; }
@@ -175,14 +177,28 @@ const ACT = {
   treeView: (a) => { S.ui.treeView = a.dataset.v; S.ui.mindScroll = null; render(); },
   treeSel: (a) => { const m = $(".tree-mind"); if (m) S.ui.mindScroll = [m.scrollLeft, m.scrollTop]; S.ui.treeSel = a.dataset.id || null; S.ui.confirmDel = null; render(); },
   treeAdd: () => { const el = $("#newNode"); const v = el && el.value.trim(); if (!v) { el && el.focus(); return; } const n = treeAdd(S.ui.treeSel, v); if (!S.ui.treeSel) S.ui.treeSel = n.id; needDirty(); render(); const ne = $("#newNode"); if (ne) ne.focus(); },
+  treeFill: async () => {
+    if (S.ui.busy.tree) return;
+    S.ui.busy.tree = true; S.ui.treeErr = null; render();
+    try { const k = await treeFill(); toast(k ? "주제 " + k + "개를 넣었어요. 필요 없는 건 지우세요." : "새로 넣을 주제를 찾지 못했어요."); }
+    catch (e) { S.ui.treeErr = aiErrMsg(e); }
+    S.ui.busy.tree = false; render();
+  },
+  treeRestore: (a) => {
+    const rj = S.P.meta.treeRejected || [], r = rj[+a.dataset.i]; if (!r) return;
+    rj.splice(+a.dataset.i, 1);
+    const par = r.area && treeNode("area_" + r.area);
+    const n = treeAdd(par ? par.id : null, r.label); n.memo = r.memo || "";
+    S.ui.treeSel = n.id; needDirty(); render(); toast("'" + cut(r.label, 20) + "'를 되살렸어요.");
+  },
   treeStd: () => { S.P.meta.treeStd = 0; ensureTreeAreas(S.P); needDirty(); render(); },
   treeUp: () => treeMove(-1),
   treeDown: () => treeMove(1),
   treeIn: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const sibs = treeChildren(S.P, n.parent); const k = sibs.indexOf(n); if (k < 1) { toast("바로 위에 같은 층 주제가 있어야 들여쓸 수 있어요."); return; } const np = sibs[k - 1]; n.parent = np.id; n.order = treeChildren(S.P, np.id).length; treeNorm(sibs[0].parent); needDirty(); render(); },
   treeOut: () => { const n = treeNode(S.ui.treeSel); if (!n || !n.parent) return; const par = treeNode(n.parent); const old = n.parent; n.parent = par ? par.parent : null; n.order = (par ? par.order : 0) + 0.5; treeNorm(old); treeNorm(n.parent); needDirty(); render(); },
-  treeDel: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const gone = new Set([n.id].concat(treeDesc(n.id).map((x) => x.id))); S.P.tree.nodes = S.P.tree.nodes.filter((x) => !gone.has(x.id)); treeNorm(n.parent); S.ui.treeSel = n.parent || null; S.ui.confirmDel = null; needDirty(); render(); toast("'" + cut(n.label, 20) + "'" + (gone.size > 1 ? " 외 " + (gone.size - 1) + "개" : "") + "를 지웠어요."); },
-  thStatus: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; n.status = n.status === a.dataset.v ? null : a.dataset.v; needDirty(); render(); },
-  thWeight: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; n.weight = n.weight === +a.dataset.v ? null : +a.dataset.v; needDirty(); render(); },
+  treeDel: () => { const n = treeNode(S.ui.treeSel); if (!n) return; const gone = new Set([n.id].concat(treeDesc(n.id).map((x) => x.id))); treeReject(S.P.tree.nodes.filter((x) => gone.has(x.id))); S.P.tree.nodes = S.P.tree.nodes.filter((x) => !gone.has(x.id)); treeNorm(n.parent); S.ui.treeSel = n.parent || null; S.ui.confirmDel = null; needDirty(); render(); toast("'" + cut(n.label, 20) + "'" + (gone.size > 1 ? " 외 " + (gone.size - 1) + "개" : "") + "를 지웠어요."); },
+  thStatus: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; S.ui.treeMore = true; delete n.ai; n.status = n.status === a.dataset.v ? null : a.dataset.v; needDirty(); render(); },
+  thWeight: (a) => { const n = treeNode(S.ui.treeSel); if (!n) return; S.ui.treeMore = true; delete n.ai; n.weight = n.weight === +a.dataset.v ? null : +a.dataset.v; needDirty(); render(); },
   actAdd: () => { const el = $("#newAct"); const v = el && el.value.trim(); if (!v) return; S.P.energy.custom.push({ id: uid("a"), t: v }); needDirty(); render(); const ne = $("#newAct"); if (ne) ne.focus(); },
   actDel: (a) => { const id = a.dataset.id; S.P.energy.custom = S.P.energy.custom.filter((x) => x.id !== id); delete S.P.energy.acts[id]; needDirty(); render(); },
   /* ledger */
@@ -247,18 +263,31 @@ const ACT = {
   evEdit: (a) => { S.ui.editEvent = a.dataset.id; if (S.ui.view !== "gantt") goView("gantt"); else { render(); window.scrollTo({ top: 0, behavior: "smooth" }); } },
   evEditClose: () => { S.ui.editEvent = null; render(); },
   insight: (a) => runInsight(a.dataset.id),
-  ivStart: () => { S.CHAT.turns = []; ivRun(true); },
+  ivStart: () => { S.CHAT.turns = []; S.CHAT.treeAt = 0; S.ui.ivTree = null; ivRun(true); },
   ivSend: () => {
     const el = $("#ivInput"); const text = el && el.value.trim();
     if (!text || S.ui.busy.iv) return;
-    S.CHAT.turns.push({ role: "user", content: text, at: nowISO() }); S.ui.ivDraft = ""; markDirty(); ivRun(false);
+    S.CHAT.turns.push({ role: "user", content: text, at: nowISO() }); S.ui.ivDraft = ""; S.ui.ivTree = null; markDirty(); ivRun(false);
+  },
+  ivTree: async () => {
+    if (S.ui.busy.tree || S.ui.busy.iv) return;
+    const from = Math.min(S.CHAT.treeAt || 0, S.CHAT.turns.length);
+    const talk = S.CHAT.turns.slice(from).filter((t) => !t.meta).map((t) => (t.role === "user" ? "나: " : "Claude: ") + cut(t.content, 400)).join("\n");
+    if (!S.CHAT.turns.slice(from).some((t) => t.role === "user" && !t.meta)) { toast("생각 나무에 반영할 새 대화가 없어요."); return; }
+    S.ui.busy.tree = true; render();
+    try {
+      const k = await treeFill(talk);
+      S.CHAT.treeAt = S.CHAT.turns.length; markDirty("chat");
+      S.ui.ivTree = k ? "생각 나무에 주제 " + k + "개를 넣었어요." : "이번 대화에서 새 주제는 찾지 못했어요.";
+    } catch (e) { S.ui.ivTree = aiErrMsg(e); }
+    S.ui.busy.tree = false; render();
   },
   ivRetry: () => { const t = S.CHAT.turns; if (t.length && t[t.length - 1].role === "user") ivRun(false); else ivRun(!t.length); },
   ivTopic: (a) => { S.CHAT.topic = a.dataset.v; markDirty(); render(); toast("다음 질문부터 '" + (TOPICS.find((t) => t[0] === a.dataset.v) || [0, ""])[1] + "'에 초점을 맞춰요."); },
   ivNewTopic: () => { if (S.ui.busy.iv) return; S.CHAT.turns.push({ role: "user", content: "(이 질문은 넘어가고, 현재 초점에 맞는 다른 질문을 해 주세요)", at: nowISO(), meta: true }); markDirty(); ivRun(false); },
   ivClear: () => {
     if (!S.ui.confirmIvClear) { S.ui.confirmIvClear = true; toast("한 번 더 누르면 대화가 비워져요. 알게 된 사실은 남아요."); setTimeout(() => (S.ui.confirmIvClear = false), 3500); return; }
-    S.ui.confirmIvClear = false; S.CHAT.turns = []; S.ui.ivErr = null; markDirty(); render();
+    S.ui.confirmIvClear = false; S.CHAT.turns = []; S.CHAT.treeAt = 0; S.ui.ivErr = null; markDirty(); render();
   },
   factDel: (a) => ACT.entryDel(a),
   logType: (a) => { const t = $("#logText"); if (t) S.ui.logDraft = t.value; S.ui.newType = a.dataset.v; render(); const t2 = $("#logText"); if (t2) { t2.value = S.ui.logDraft || ""; t2.focus(); } },

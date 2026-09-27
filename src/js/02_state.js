@@ -31,7 +31,7 @@ function blankProfile() {
     timeline: { events: [] },
     ledger: [],
     hints: {}, prior: {}, progressLog: [], done: {}, chapterAt: {},
-    meta: { migration: null, exports: [] },
+    meta: { migration: null, exports: [], treeRejected: [] },
   };
 }
 function ensureShape(P) {
@@ -83,7 +83,8 @@ function areaFor(label, oldGroup) {
   return GROUP_TO_AREA[oldGroup] || null;
 }
 function ensureTreeAreas(P) {
-  if (P.meta.treeStd) return false;
+  const merged = treeMergeNow(P);
+  if (P.meta.treeStd) return merged;
   const ns = P.tree.nodes, now = nowISO();
   const oldRoots = ns.filter((n) => !n.parent && !n.area);
   TREE_AREAS.forEach((a, i) => { if (!ns.some((n) => n.id === "area_" + a.id)) ns.push({ id: "area_" + a.id, parent: null, area: a.id, label: a.name, memo: "", now: "", status: null, weight: null, order: i }); });
@@ -104,6 +105,13 @@ function ensureTreeAreas(P) {
   TREE_AREAS.forEach((a) => treeChildrenOf(P, "area_" + a.id).forEach((n, i) => (n.order = i)));
   P.meta.treeStd = 1;
   if (moves.length) P.meta.treeMove = { at: now, reviewed: false, moves };
+  return true;
+}
+/* one memo per topic (owner decision 2026-09): fold the old "지금의 생각" into the memo once */
+function treeMergeNow(P) {
+  if (P.meta.treeMemo) return false;
+  P.tree.nodes.forEach((n) => { if (n.now) { n.memo = n.memo ? n.memo + "\n\n지금: " + n.now : n.now; n.now = ""; } });
+  P.meta.treeMemo = 1;
   return true;
 }
 function treeChildrenOf(P, pid) { return P.tree.nodes.filter((n) => n.parent === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }

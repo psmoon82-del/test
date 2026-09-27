@@ -6,7 +6,7 @@ claude.ai Artifact로 배포된다: https://claude.ai/artifact/AfkbQn3BB16ocdAap
 
 ## 구조 (3층)
 - 기록층 **원장**(`08_ledger`): `P.ledger` 항목 {id, cat, sub, label, value, date, sens, conf, src, at, up}. 분류는 `01_data`의 `LEDGER_CATS`. 1년 넘게 안 고친 항목은 "확인 필요".
-- 이해층: **탐구**(`06_journey`, 9장 선택형) · **AI 인터뷰**(`07_interview`) · **생각 나무**(`06_tree`, `P.tree.nodes` {id, parent, label, memo, now, status, weight, order, area?}). 맨 위 층만 표준(`TREE_AREAS`: 라이프 휠 8 + 의미·나 자신, id `area_<id>`), 그 아래는 자유. `ensureTreeAreas`가 한 번 적용하고(`meta.treeStd`), 옮긴 기록은 `meta.treeMove` → `#review` · 지도 4장(`09_portrait` `10_map` `11_gantt` `12_metrics`).
+- 이해층: **탐구**(`06_journey`, 9장 선택형) · **AI 인터뷰**(`07_interview`) · **생각 나무**(`06_tree`, `P.tree.nodes` {id, parent, label, memo, now, status, weight, order, area?}). 맨 위 층만 표준(`TREE_AREAS`: 라이프 휠 8 + 의미·나 자신, id `area_<id>`), 그 아래는 자유. `ensureTreeAreas`가 한 번 적용하고(`meta.treeStd`), 옮긴 기록은 `meta.treeMove` → `#review`. 자동 채우기(사용자 결정 2026-09): 'AI로 채우기' 버튼과 인터뷰의 '마치고 생각 나무에 반영'이 `aiTreeTopics`→`treeFill`로 주제를 바로 넣는다(`ai: true`, 고치면 사라짐). 지운 주제는 `meta.treeRejected`에 남아 다시 제안하지 않고 되살릴 수 있다. 입력 칸은 이름+메모 하나(`now`는 `treeMergeNow`가 한 번 메모로 합침, `meta.treeMemo`), 상태·무게는 접어 둔다 · 지도 4장(`09_portrait` `10_map` `11_gantt` `12_metrics`).
 - 내보내기층 **팩**(`12_export`): `PACKS` 용도별 Markdown, 전체 JSON, 엑셀(SheetJS 0.18.5 지연 로드) 저장·올리기(적용 전 미리보기). 내보낸 기록은 `P.meta.exports`.
 - `02_backend.js` — 호스트 연결 층. 저장(loadAll/save), AI(aiJSON), 파일 저장(download)을 여기서만 호출한다. 독립 앱으로 옮길 때 이 파일만 바꾼다. 런타임이 없으면 localStorage로 동작.
 - `src/js/*.js` — 번호·이름 순서로 이어 붙여 하나의 IIFE(모듈 없음, 전역 공유). `13_app`이 셸·라우터·이벤트 위임(`data-act`, `data-bind`, `data-go`)·액션.
@@ -20,7 +20,7 @@ claude.ai Artifact로 배포된다: https://claude.ai/artifact/AfkbQn3BB16ocdAap
   `seed/seed_owner.json`이 없으면(git 클론 직후) 시드 없이 돈다: `mobile|edge|heal`은 통과, `all`은 시드 항목을 클릭하므로 시드가 있어야 한다.
   클라우드 세션: `pip install playwright` 후 `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (`playwright install` 금지).
   sync Playwright에서는 `time.sleep` 대신 `page.wait_for_timeout`을 써야 route 핸들러가 돈다.
-  `python3 test/run.py flex` — 범위·기울기·상황에 따라 답과 AI 전달. `python3 test/run.py atlas` — v3→v4 이전, 이전 확인, 원장, 생각 나무, 팩, 엑셀 왕복, 주간 질문, 새로고침 복원.
+  `python3 test/run.py tree` — 생각 나무 자동 채우기·지운 주제·되살리기·인터뷰 반영·메모 합치기. `python3 test/run.py flex` — 범위·기울기·상황에 따라 답과 AI 전달. `python3 test/run.py atlas` — v3→v4 이전, 이전 확인, 원장, 생각 나무, 팩, 엑셀 왕복, 주간 질문, 새로고침 복원.
 - 배포: Artifact 도구로 같은 URL에 publish(`url` 지정). capabilities:
   `{"db":{"rules":[{"path":"seed","read":"owner","write":"owner"},{"path":"profile","read":"owner","write":"owner"}]},"sample":{},"user":{},"downloads":true}`
 
