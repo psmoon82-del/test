@@ -1023,6 +1023,8 @@ function noteErr(kind, e) {
   console.error("[lifedock] " + kind + " failed", e);
   renderDiag();
 }
+window.addEventListener("error", (ev) => noteErr("js", ev.error || { message: ev.message }));
+window.addEventListener("unhandledrejection", (ev) => noteErr("js", ev.reason));
 async function readPerms() {
   try { const pm = await window.claude.use("permissions"); S.diag.perms = pm ? await pm.state() : null; } catch (e) { S.diag.perms = null; }
   renderDiag();
@@ -1051,10 +1053,11 @@ async function boot() {
     const [p, ai, chat, log] = await Promise.all(["profile", "ai", "chat", "log"].map((n) => db.doc(docPath(n)).get()));
     const blankish = (d) => !d || (!(d.basics && d.basics.name) && !(d.facts || []).length && !(d.rev) && !((d.thoughts && d.thoughts.items) || []).length && !Object.keys((d.ipip && d.ipip.answers) || {}).length);
     if (p.exists && !(S.isOwner && blankish(p.data()) && !(log.exists && (log.data().items || []).length))) {
-      S.P = ensureShape(p.data());
-      if (ai.exists) S.AI = Object.assign({ portrait: null, map: null, insights: {} }, ai.data());
-      if (chat.exists) S.CHAT = Object.assign({ turns: [], topic: "auto" }, chat.data());
-      if (log.exists) S.LOG = Object.assign({ items: [] }, log.data());
+      /* snapshot data() is frozen — the app mutates its state in place, so keep copies */
+      S.P = ensureShape(clone(p.data()));
+      if (ai.exists) S.AI = Object.assign({ portrait: null, map: null, insights: {} }, clone(ai.data()));
+      if (chat.exists) S.CHAT = Object.assign({ turns: [], topic: "auto" }, clone(chat.data()));
+      if (log.exists) S.LOG = Object.assign({ items: [] }, clone(log.data()));
     } else {
       let seeded = false;
       if (S.isOwner) {
@@ -1117,6 +1120,7 @@ function digest(P, opt) {
 }
 
 function aiErrMsg(e) {
+  if (e instanceof Error) { noteErr("js", e); return "앱 내부 오류로 처리하지 못했어요 (" + cut(e.message, 60) + ")."; }
   const c = e && e.code;
   return aiErrCopy(c) + (c && c !== "cancelled" ? " [" + c + "]" : "");
 }
@@ -2334,7 +2338,7 @@ function diagHTML() {
   const err = (e) => (e ? e.code + (e.msg ? " — " + e.msg : "") + " (" + e.at + ")" : "없음");
   const perms = d.perms ? Object.keys(d.perms).map((k) => k + ":" + d.perms[k]).join(", ") : "알 수 없음";
   return row("모드", S.mode) + (c ? row("저장소", yn(c.db)) + row("사용자", yn(c.user) + (S.uid ? " · id 있음" : " · id 없음") + (S.isOwner ? " · 소유자" : "")) + row("Claude", yn(c.sample) + (S.aiOff ? " · 꺼짐(" + S.aiOff + ")" : "")) : row("런타임", "없음")) +
-    row("권한", perms) + row("저장 성공", d.writes + "회" + (d.lastWrite ? " (마지막 " + d.lastWrite + ")" : "") + (S.saveState === "saving" ? " · 저장 중" : "")) + (S.aiLite ? row("AI 방식", "가벼운 방식(quick)") : "") + row("마지막 저장 오류", err(d.save)) + row("마지막 AI 오류", err(d.ai)) + (d.boot ? row("불러오기 오류", err(d.boot)) : "");
+    row("권한", perms) + row("저장 성공", d.writes + "회" + (d.lastWrite ? " (마지막 " + d.lastWrite + ")" : "") + (S.saveState === "saving" ? " · 저장 중" : "")) + (S.aiLite ? row("AI 방식", "가벼운 방식(quick)") : "") + row("마지막 저장 오류", err(d.save)) + row("마지막 AI 오류", err(d.ai)) + (d.boot ? row("불러오기 오류", err(d.boot)) : "") + (d.js ? row("앱 오류", err(d.js)) : "");
 }
 function renderDiag() { const h = diagHTML(); $$(".diag-body").forEach((el) => { el.innerHTML = h; }); }
 function render() {

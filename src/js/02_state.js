@@ -198,6 +198,8 @@ function noteErr(kind, e) {
   console.error("[lifedock] " + kind + " failed", e);
   renderDiag();
 }
+window.addEventListener("error", (ev) => noteErr("js", ev.error || { message: ev.message }));
+window.addEventListener("unhandledrejection", (ev) => noteErr("js", ev.reason));
 async function readPerms() {
   try { const pm = await window.claude.use("permissions"); S.diag.perms = pm ? await pm.state() : null; } catch (e) { S.diag.perms = null; }
   renderDiag();
@@ -226,10 +228,11 @@ async function boot() {
     const [p, ai, chat, log] = await Promise.all(["profile", "ai", "chat", "log"].map((n) => db.doc(docPath(n)).get()));
     const blankish = (d) => !d || (!(d.basics && d.basics.name) && !(d.facts || []).length && !(d.rev) && !((d.thoughts && d.thoughts.items) || []).length && !Object.keys((d.ipip && d.ipip.answers) || {}).length);
     if (p.exists && !(S.isOwner && blankish(p.data()) && !(log.exists && (log.data().items || []).length))) {
-      S.P = ensureShape(p.data());
-      if (ai.exists) S.AI = Object.assign({ portrait: null, map: null, insights: {} }, ai.data());
-      if (chat.exists) S.CHAT = Object.assign({ turns: [], topic: "auto" }, chat.data());
-      if (log.exists) S.LOG = Object.assign({ items: [] }, log.data());
+      /* snapshot data() is frozen — the app mutates its state in place, so keep copies */
+      S.P = ensureShape(clone(p.data()));
+      if (ai.exists) S.AI = Object.assign({ portrait: null, map: null, insights: {} }, clone(ai.data()));
+      if (chat.exists) S.CHAT = Object.assign({ turns: [], topic: "auto" }, clone(chat.data()));
+      if (log.exists) S.LOG = Object.assign({ items: [] }, clone(log.data()));
     } else {
       let seeded = false;
       if (S.isOwner) {

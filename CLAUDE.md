@@ -27,6 +27,8 @@ claude.ai Artifact로 배포된다: https://claude.ai/artifact/AfkbQn3BB16ocdAap
 - `seed/owner` — 소유자 전용 시드(엑셀 메모·대화에서 옮긴 개인 데이터). `seed/build_seed.py`로 생성한 `seed/seed_owner.json`. 소유자의 profile이 없거나 사실상 비어 있으면 부팅 시 시드를 복사한다.
 - `profile/*` — v1/v2 시절 데이터(현재 미사용, 소유자 전용 규칙).
 - 개인 데이터는 HTML에 하드코딩하지 않는다. 추정 연도는 `est: true`로 표시.
+- 실제 런타임의 스냅샷 `data()`는 깊게 얼어 있다(frozen). 앱 상태로 쓸 때는 반드시 `clone()`한다. 목(mock)도 똑같이 얼려서 돌려준다.
+- 화면의 "연결 상태"(레일 하단·현황판 맨 아래)에 모드·권한·저장 성공 횟수·마지막 저장/AI/앱 오류가 보인다. 실제 환경 문제는 여기서부터 본다.
 
 ## 주의
 - `seed/seed_owner.json`과 그 원본인 `seed/build_seed.py`에는 실제 개인정보가 들어 있다. 둘 다 `.gitignore`에 있다. 공개 저장소에 올리지 말 것.

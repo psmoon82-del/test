@@ -40,6 +40,7 @@ function digest(P, opt) {
 }
 
 function aiErrMsg(e) {
+  if (e instanceof Error) { noteErr("js", e); return "앱 내부 오류로 처리하지 못했어요 (" + cut(e.message, 60) + ")."; }
   const c = e && e.code;
   return aiErrCopy(c) + (c && c !== "cancelled" ? " [" + c + "]" : "");
 }

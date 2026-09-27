@@ -5,7 +5,8 @@
   if (SEED && !window.__NO_SEED__) store.set("seed/owner", JSON.parse(JSON.stringify(SEED)));
   if (window.__PRE__) Object.entries(window.__PRE__).forEach(([k, v]) => store.set(k, v));
   window.__store = store;
-  const snap = (path) => { const d = store.get(path); return { id: path.split("/").pop(), exists: d !== undefined, data: () => (d === undefined ? undefined : JSON.parse(JSON.stringify(d))), metadata: { fromCache: false, hasPendingWrites: false } }; };
+  const deepFreeze = (o) => { if (o && typeof o === "object") { Object.values(o).forEach(deepFreeze); Object.freeze(o); } return o; };
+  const snap = (path) => { const d = store.get(path); return { id: path.split("/").pop(), exists: d !== undefined, data: () => (d === undefined ? undefined : deepFreeze(JSON.parse(JSON.stringify(d)))), metadata: { fromCache: false, hasPendingWrites: false } }; };
   const doc = (path) => ({ id: path.split("/").pop(), path, get: async () => snap(path), set: async (d) => { await new Promise((r) => setTimeout(r, 20)); store.set(path, JSON.parse(JSON.stringify(d))); window.__writes = (window.__writes || 0) + 1; }, update: async (d) => { store.set(path, Object.assign(store.get(path) || {}, d)); }, delete: async () => store.delete(path), onSnapshot: (n) => { n(snap(path)); return () => {}; } });
   const db = { doc, collection: (p) => ({ path: p, doc: (id) => doc(p + "/" + id) }) };
   const user = { id: async () => "u_testuser000000000000000", isOwner: async () => !window.__NOT_OWNER__, canEdit: async () => true, can: async () => true, me: async () => ({ id: "u_test", name: "", isOwner: true }) };
