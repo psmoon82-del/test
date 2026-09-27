@@ -1,11 +1,32 @@
 /* ============================================================ Claude: profile digest, prompts, calls */
 const cut = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 
+/* shared helpers for ledger entries and the think tree */
+const SRC_LABEL = { interview: "AI 인터뷰", record: "기록에서 추출", nudge: "주간 질문", import: "엑셀 가져오기", "": "직접 입력" };
+function entryText(e) { return (e.label ? e.label + ": " : "") + (e.value || ""); }
+function srcLabel(src) { return SRC_LABEL[src || ""] || src; }
+function treeChildren(P, pid) { return P.tree.nodes.filter((n) => (n.parent || null) === (pid || null)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
+function treePath(P, n) { const out = []; let x = n, guard = 0; while (x && guard++ < 20) { out.unshift(x.label); x = P.tree.nodes.find((y) => y.id === x.parent); } return out.join(" › "); }
+function allActs(P) { return ACTS.concat((P.energy.custom || []).map((a) => ({ id: a.id, t: a.t, custom: true }))); }
+/* ledger lines for prompts and packs, newest first, grouped by category */
+function ledgerLines(P, cats, max) {
+  const out = [];
+  (cats || CAT_IDS).forEach((c) => {
+    const xs = P.ledger.filter((e) => e.cat === c).sort((a, b) => String(b.up || b.at).localeCompare(String(a.up || a.at))).slice(0, max || 60);
+    if (xs.length) out.push("[" + CAT_BY[c].name + "]\n" + xs.map((e) => "- " + (e.sub ? "(" + e.sub + ") " : "") + cut(entryText(e), 200) + (e.date ? " · " + fmtYM(e.date) : "") + (e.conf === "est" ? " · 추정" : "")).join("\n"));
+  });
+  return out.join("\n");
+}
+function treeLines(P, max) {
+  const ns = P.tree.nodes.filter((n) => n.kind !== "word" && (n.now || n.memo || n.status || n.parent));
+  return ns.slice(0, max || 40).map((n) => treePath(P, n) + (n.status ? " [" + ((TH_STATUS.find((s) => s[0] === n.status) || [0, ""])[1]) + (n.weight ? ", 비중" + n.weight : "") + "]" : "") + (n.now ? " 지금: " + cut(n.now, 80) : n.memo ? " 메모: " + cut(n.memo, 70) : "")).join(" / ");
+}
+
 function digest(P, opt) {
   opt = opt || {};
   const L = [];
   const b = P.basics;
-  L.push("[제원] " + [b.name && "이름 " + b.name, b.birthYear && "출생 " + b.birthYear + (b.birthEst ? "(추정)" : ""), b.region && "거주 " + b.region, b.family && "가족 " + b.family, b.job && "일 " + b.job, b.career && "경력 " + cut(b.career, 140), b.intro && "자기소개 " + cut(b.intro, 140)].filter(Boolean).join(" / "));
+  L.push("[기본] " + [b.name && "이름 " + b.name, b.birthYear && "출생 " + b.birthYear + (b.birthEst ? "(추정)" : ""), b.region && "거주 " + b.region, b.family && "가족 " + b.family, b.job && "일 " + b.job, b.career && "경력 " + cut(b.career, 140), b.intro && "자기소개 " + cut(b.intro, 140)].filter(Boolean).join(" / "));
   const ws = wheelStats(P).filter((w) => w.sat != null);
   if (ws.length) L.push("[지금의 나 · 라이프 휠: 만족 0~10 / 중요 1~5] " + ws.map((w) => w.name + " 만족" + w.sat + "·중요" + (w.imp ?? "?") + (w.note ? "(" + cut(w.note, 50) + ")" : "")).join(", "));
   const tr = ipipScores(P);
@@ -24,14 +45,14 @@ function digest(P, opt) {
   const lv = LOVE_CATS.map((c) => { const it = P.loves.cats[c.id]?.items || []; return it.length ? c.name + ": " + it.slice(0, opt.full ? 10 : 6).map((x) => x.name + (x.why ? "(" + cut(x.why, 40) + ")" : "")).join(", ") : null; }).filter(Boolean);
   if (lv.length) L.push("[좋아하는 것] " + lv.join(" | "));
   if (P.prior && P.prior.tasteNote) L.push("[콘텐츠 취향 이전 응답] " + cut(P.prior.tasteNote, 200));
-  const th = P.thoughts.items.filter((x) => x.memo || x.now || x.status);
-  if (th.length) L.push("[마음속 주제 (예전 메모 → 지금)] " + th.slice(0, opt.full ? 30 : 16).map((x) => x.label + (x.status ? "[" + (TH_STATUS.find((s) => s[0] === x.status) || [0, ""])[1] + (x.weight ? ", 비중" + x.weight : "") + "]" : "") + (x.now ? " 지금: " + cut(x.now, 80) : x.memo ? " 메모: " + cut(x.memo, 70) : x.links?.length ? " (" + x.links.slice(0, 4).join(",") + ")" : "")).join(" / "));
+  const tl = treeLines(P, opt.full ? 40 : 20);
+  if (tl) L.push("[생각 나무 (가지 › 주제)] " + tl);
   const wn = P.wants.items;
   if (wn.length) L.push("[원하는 것] " + WANT_TYPES.map((t) => { const xs = wn.filter((w) => w.type === t.id).sort((a, b) => (b.prio || 0) - (a.prio || 0)); return xs.length ? t.en + ": " + xs.slice(0, 7).map((w) => w.text + "(" + (HZ_BY[w.horizon]?.[1] || "?") + ",★" + (w.prio || 1) + "," + (WS_BY[w.status] || "") + ")").join(", ") : null; }).filter(Boolean).join(" | "));
   const ev = P.timeline.events.filter((x) => x.s).sort((a, b) => ym2num(a.s) - ym2num(b.s));
   if (ev.length) L.push("[연대기] " + ev.map((x) => fmtYM(x.s) + (x.e ? "~" + fmtYM(x.e) : "") + " " + x.label + (x.est ? "(추정)" : "")).join(", "));
-  const facts = P.facts.slice(-(opt.facts || 40));
-  if (facts.length) L.push("[알려진 사실]\n" + facts.map((f) => "- (" + (AREAS[f.area] || f.area) + ") " + cut(f.text, 150)).join("\n"));
+  const led = ledgerLines(P, opt.cats, opt.facts ? Math.ceil(opt.facts / 3) : 20);
+  if (led) L.push("[원장: 직접 기록하거나 대화에서 알게 된 사실]\n" + led);
   if (opt.log) {
     const recs = S.LOG.items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, opt.log);
     if (recs.length) L.push("[최근 기록]\n" + recs.map((r) => "- " + (RT_BY[r.type]?.name || r.type) + " " + fmtYM(r.date) + ": " + cut(r.text, 130)).join("\n"));
@@ -61,12 +82,12 @@ function aiErrCopy(c) {
   })[c] || "연결이 불안정해 답을 받지 못했어요. 다시 시도해 주세요.";
 }
 const PERMANENT = new Set(["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"]);
-function aiAvailable() { return !!S.sample && !S.aiOff; }
+function aiAvailable() { return Backend.aiAvailable() && !S.aiOff; }
 async function aiJSON(prompt, opts) {
   if (!aiAvailable()) throw { code: "capability_disabled" };
   const o = Object.assign({ modelTier: "default" }, opts || {});
   if (S.aiLite) o.modelTier = "quick";
-  try { const r = await S.sample.json(prompt, o); S.diag.ai = null; renderDiag(); return r; }
+  try { const r = await Backend.aiJSON(prompt, o); S.diag.ai = null; renderDiag(); return r; }
   catch (e) {
     if (!(e && e.code === "cancelled")) noteErr("ai", e);
     if (e && e.code === "empty_completion") S.aiLite = true;
@@ -85,7 +106,7 @@ function chapterFocus(P, id) {
     case "values": return "딜레마 선택: " + DILEMMAS.map((d, i) => { const p = P.values.picks[i]; return p ? "「" + d.q + "」→ " + (p === "a" ? d.a[1] : d.b[1]) : null; }).filter(Boolean).join(" / ") + "\n가치 점수: " + valueScores(P).map((v) => VAL_BY[v.id].name + " " + v.wins + "/" + v.n).join(", ");
     case "energy": { const el = energyLists(P); const d = discTally(P); const c = chrono(P); return "충전: " + el.c.map((a) => a.t).join(", ") + "\n보통: " + el.n.map((a) => a.t).join(", ") + "\n방전: " + el.d.map((a) => a.t).join(", ") + "\n최근 몰입: " + (P.energy.flowRecent || "-") + "\n마지막 몰입: " + (P.energy.flowLast || "-") + "\n어릴 때: " + (P.energy.flowChild || "-") + "\n리듬: " + (c ? c.label : "-") + "\nDISC: D" + d.t.D + " I" + d.t.I + " S" + d.t.S + " C" + d.t.C; }
     case "loves": return LOVE_CATS.map((c) => { const x = P.loves.cats[c.id]; return c.name + " [" + (x.subs || []).join(",") + "] " + (x.items || []).map((i) => i.name + (i.why ? "(" + cut(i.why, 60) + ")" : "")).join(", "); }).join("\n");
-    case "thoughts": return P.thoughts.items.map((x) => x.label + " | 상태:" + ((TH_STATUS.find((s) => s[0] === x.status) || [0, "미검토"])[1]) + " | 비중:" + (x.weight || "-") + " | 예전 메모:" + cut(x.memo || (x.links || []).join(","), 90) + " | 지금:" + cut(x.now, 90)).join("\n");
+    case "thoughts": return P.tree.nodes.filter((n) => n.kind !== "word").map((n) => treePath(P, n) + " | 상태:" + ((TH_STATUS.find((x) => x[0] === n.status) || [0, "미검토"])[1]) + " | 비중:" + (n.weight || "-") + " | 메모:" + cut(n.memo, 90) + " | 지금:" + cut(n.now, 90)).join("\n");
     case "wants": return P.wants.items.map((w) => WT_BY[w.type].en + " " + w.text + " | " + (HZ_BY[w.horizon]?.[1] || "") + " | ★" + w.prio + " | " + (WS_BY[w.status] || "") + (w.why ? " | 이유:" + cut(w.why, 60) : "")).join("\n");
     case "timeline": return P.timeline.events.map((x) => (x.s ? fmtYM(x.s) : "연도미정") + (x.e ? "~" + fmtYM(x.e) : "") + " " + LANE_BY[x.lane]?.name + " " + x.label + (x.est ? "(추정)" : "")).join("\n");
   }
@@ -93,7 +114,7 @@ function chapterFocus(P, id) {
 }
 async function aiChapterInsight(id) {
   const P = S.P; const ch = CH_BY[id];
-  const prompt = "당신은 자기이해 도구 '라이프 독'의 해석가입니다. 사용자가 방금 'CH." + ch.code + " " + ch.name + "(" + ch.frame + ")'를 마쳤습니다.\n" + STYLE_RULES +
+  const prompt = "당신은 자기 이해 도구 'Atlas(나의 지도책)'의 해석가입니다. 사용자가 방금 '" + ch.code + " " + ch.name + "(" + ch.frame + ")'를 마쳤습니다.\n" + STYLE_RULES +
     "\n\n[이번 챕터 결과]\n" + chapterFocus(P, id) +
     "\n\n[참고: 프로필 전체 요약]\n" + digest(P) +
     "\n\n이 챕터 결과를 해석해 주세요. 다른 챕터·메모와 연결되거나 어긋나는 지점이 있으면 구체적으로 짚으세요." +
@@ -135,37 +156,33 @@ async function aiMap(nodes) {
 async function aiExtractFromRecord(rec) {
   const prompt = "아래는 한 사람이 남긴 기록입니다. 이 기록에서 이 사람에 대해 알 수 있는 사실을 뽑으세요.\n" + STYLE_RULES +
     "\n\n[기록 · " + (RT_BY[rec.type]?.name || "") + " · " + fmtYM(rec.date) + "]\n" + rec.text +
-    "\n\n[이미 알려진 사실]\n" + S.P.facts.slice(-30).map((f) => "- " + f.text).join("\n") +
-    '\n\n이미 알려진 사실과 겹치지 않는 것만, 기록에 실제로 쓰인 내용만. JSON 하나로만 답하세요: {"facts": [{"area": "basics|wheel|traits|values|energy|work|family|loves|thoughts|wants|timeline", "text": "3인칭 한 문장"}]} (최대 4개, 없으면 빈 배열)';
+    "\n\n[이미 알려진 사실]\n" + S.P.ledger.slice(-40).map((f) => "- " + entryText(f)).join("\n") +
+    '\n\n이미 알려진 사실과 겹치지 않는 것만, 기록에 실제로 쓰인 내용만. JSON 하나로만 답하세요: {"facts": [{"cat": "' + CAT_IDS.join("|") + '", "label": "짧은 항목명(선택)", "text": "3인칭 한 문장"}]} (최대 4개, 없으면 빈 배열)';
   const r = await aiJSON(prompt, { modelTier: "quick" });
-  return (r && Array.isArray(r.facts) ? r.facts : []).filter((f) => f && f.text && AREAS[f.area]).slice(0, 4);
+  return (r && Array.isArray(r.facts) ? r.facts : []).filter((f) => f && f.text).map((f) => ({ cat: CAT_BY[f.cat] ? f.cat : AREA_TO_CAT[f.area] || "etc", label: String(f.label || ""), text: String(f.text) })).slice(0, 4);
 }
 
 /* ---------------- interview ---------------- */
 function gapList(P) {
-  const rows = CH.map((c) => ({ id: c.id, name: c.name, p: P.done[c.id] ? 100 : chProgress(P, c.id) }));
-  const facts = {};
-  P.facts.forEach((f) => { facts[f.area] = (facts[f.area] || 0) + 1; });
-  return rows.map((r) => ({ ...r, facts: facts[r.id === "ipip" ? "traits" : r.id] || 0 })).sort((a, b) => a.p - b.p);
+  return CH.map((c) => ({ id: c.id, name: c.name, p: P.done[c.id] ? 100 : chProgress(P, c.id) })).sort((a, b) => a.p - b.p);
 }
-const TOPICS = [
-  ["auto", "자동 (빈 곳부터)"], ["wheel", "지금의 나"], ["traits", "성격"], ["values", "가치"], ["energy", "에너지·몰입"], ["work", "일"],
-  ["family", "가족"], ["loves", "취향"], ["thoughts", "마음속 주제"], ["wants", "원하는 것"], ["timeline", "지나온 길"],
-];
+function emptyCats(P) { return LEDGER_CATS.filter((c) => c.id !== "etc" && !catFilled(P, c.id)); }
+const TOPICS = [["auto", "자동 (빈 곳부터)"]].concat(LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => [c.id, c.name]));
 function interviewRules(P, topic) {
   let focus;
   if (topic === "auto") {
     const g = gapList(P).slice(0, 3);
     const ws = wheelStats(P).filter((w) => w.gap != null).sort((a, b) => b.gap - a.gap).slice(0, 2);
-    focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
-  } else focus = "사용자가 고른 주제: " + (TOPICS.find((t) => t[0] === topic) || [0, topic])[1];
-  return "당신은 자기이해 도구 '라이프 독'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
-    "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 재정·투자의 세부 숫자, 건강 진단 같은 민감한 주제는 사용자가 먼저 꺼내지 않으면 파고들지 않는다.\n- 진단하거나 성격을 단정하지 않는다.\n" +
+    const ec = emptyCats(P).slice(0, 4);
+    focus = "자동: 가장 덜 채워진 영역부터 → " + g.map((x) => x.name + "(" + x.p + "%)").join(", ") + (ec.length ? ". 원장에서 아직 빈 분류: " + ec.map((c) => c.name).join(", ") : "") + (ws.length ? ". 라이프 휠에서 중요도 대비 만족이 낮은 영역: " + ws.map((w) => w.name).join(", ") : "") + ". 아직 몰입 경험, 좋아하는 이유, 원하는 것의 '왜'가 비어 있다면 그쪽을 우선.";
+  } else focus = "사용자가 고른 주제: " + (TOPICS.find((t) => t[0] === topic) || [0, "자유"])[1] + ". 이 분류에서 아직 비어 있거나 오래된 것을 우선.";
+  return "당신은 자기 이해 도구 'Atlas(나의 지도책)'의 인터뷰어입니다. 한 사람이 자신을 체계적으로 들여다보도록 돕는 숙련된 인터뷰어처럼 대화합니다.\n" +
+    "규칙:\n- 한국어 존댓말. 따뜻하지만 담백하게. 과한 칭찬, 상담사 말투, 이모지 금지.\n- 한 번에 질문은 하나. 답은 2~4문장.\n- 추상적인 답에는 구체적인 장면과 예시를 묻고, '왜'를 한두 단계 더 파고든다.\n- 사용자가 한 말을 짧게 되짚은 뒤 다음 질문으로 간다.\n- 프로필에 이미 있는 내용은 다시 묻지 말고 그 위에서 더 깊게 묻는다. 서로 어긋나는 신호가 보이면 조심스럽게 짚는다.\n- 건강·의료, 재정·보험 같은 민감한 정보도 기록 대상이다. 필요하면 구체적인 수치와 날짜까지 묻되, 사용자가 원하지 않으면 바로 넘어간다.\n- 진단하거나 성격을 단정하지 않는다.\n" +
     "[이번 인터뷰 초점] " + focus + "\n\n[프로필 요약]\n" + digest(P, S.aiLite ? { facts: 20 } : { facts: 50, log: 6 });
 }
 /* format goes last so Claude answers in JSON rather than prose */
 const IV_FORMAT = "[응답 형식] 인사말이나 설명을 JSON 밖에 쓰지 말고, 아래 JSON 하나로만 답하세요. 사용자에게 할 말은 모두 reply 안에 넣습니다.\n" +
-  '{"reply": "사용자에게 할 말(마지막은 질문 하나)", "facts": [{"area": "basics|wheel|traits|values|energy|work|family|loves|thoughts|wants|timeline", "text": "사용자가 이번 메시지에서 직접 말한 사실, 3인칭 한 문장"}], "wants": [{"type": "have|do|be|learn|give", "text": "...", "horizon": "1y|3y|5y|10y|someday"}], "events": [{"year": "YYYY 또는 YYYY-MM", "label": "...", "lane": "me|family|work|home"}]}' +
+  '{"reply": "사용자에게 할 말(마지막은 질문 하나)", "facts": [{"cat": "' + CAT_IDS.join("|") + '", "label": "짧은 항목명(선택, 예: 복용약)", "text": "사용자가 이번 메시지에서 직접 말한 사실, 3인칭 한 문장"}], "wants": [{"type": "have|do|be|learn|give", "text": "...", "horizon": "1y|3y|5y|10y|someday"}], "events": [{"year": "YYYY 또는 YYYY-MM", "label": "...", "lane": "me|family|work|home"}]}' +
   "\n" + "- facts, wants, events는 사용자가 이번 메시지에서 실제로 말한 것만. 추측 금지. 없으면 빈 배열. 이미 알려진 사실과 같은 내용은 넣지 않는다.";
 function proseReply(text) {
   const t = String(text || "").trim();

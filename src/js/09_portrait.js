@@ -1,17 +1,17 @@
-/* ============================================================ DRAWINGS common + LD-01 PORTRAIT */
-const DWGS = [["portrait", "LD-01", "자기 초상"], ["map", "LD-02", "살아있는 지도"], ["gantt", "LD-03", "인생 공정표"], ["metrics", "LD-04", "지표"]];
+/* ============================================================ MAPS common + I PORTRAIT */
+const DWGS = [["portrait", "I", "자기 초상"], ["map", "II", "관계 지도"], ["gantt", "III", "인생 연표"], ["metrics", "IV", "지표"]];
 function drawingHead(active, lede) {
   const d = DWGS.find((x) => x[0] === active);
-  return '<div class="page-head"><div><div class="eyebrow">Drawings · 도면 ' + d[1] + "</div><h1>" + d[2] + '</h1><p class="lede">' + lede + "</p></div></div>" +
-    '<nav class="dwg-tabs" aria-label="도면">' + DWGS.map(([v, no, n]) => '<a href="#' + v + '" class="' + (v === active ? "on" : "") + '" data-act="go" data-view="' + v + '"><span class="mono">' + no + "</span>" + n + "</a>").join("") + "</nav>";
+  return '<div class="page-head"><div><div class="eyebrow">Plate ' + d[1] + " · 지도" + "</div><h1>" + d[2] + '</h1><p class="lede">' + lede + "</p></div></div>" +
+    '<nav class="dwg-tabs" aria-label="지도">' + DWGS.map(([v, no, n]) => '<a href="#' + v + '" class="' + (v === active ? "on" : "") + '" data-act="go" data-view="' + v + '"><span class="mono">' + no + "</span>" + n + "</a>").join("") + "</nav>";
 }
 function drawingFoot(no, title, rev, date, drawn) {
-  return '<div class="dwg-foot">' + titleBlock([["DWG NO.", no], ["TITLE", esc(title)], ["REV", rev], ["DATE", date], ["DRAWN", esc(drawn)], ["CHECKED", esc(S.P.basics.name || "본인")]]) + "</div>";
+  return '<div class="dwg-foot">' + titleBlock([["도판", no], ["제목", esc(title)], ["판", rev], ["날짜", date], ["작성", esc(drawn)]]) + "</div>";
 }
 function sinceCount(iso) {
   if (!iso) return 0; const t = String(iso);
   const P = S.P;
-  return P.facts.filter((f) => String(f.at) > t).length + S.LOG.items.filter((r) => String(r.at) > t).length + P.wants.items.filter((w) => w.src === "AI 인터뷰").length * 0;
+  return P.ledger.filter((f) => String(f.at) > t).length + S.LOG.items.filter((r) => String(r.at) > t).length + P.wants.items.filter((w) => w.src === "AI 인터뷰").length * 0;
 }
 
 function viewPortrait() {
@@ -26,10 +26,10 @@ function viewPortrait() {
   else if (aiAvailable()) bar += '<button class="btn ' + (pr ? "" : "accent") + '" data-act="drawPortrait">' + I.spark + (pr ? "다시 그리기" : "초상 그리기") + "</button>";
   else bar += '<span class="muted" style="font-size:12.5px">' + esc(S.aiOff ? aiErrMsg({ code: S.aiOff }) : "Claude 연결이 있는 화면에서 초상을 그릴 수 있어요.") + "</span>";
   const since = pr ? sinceCount(pr.at) : 0;
-  if (pr && since) bar += '<span class="tag est"><span class="rev-tri">' + pad2((pr.rev || 0) + 1) + "</span>초상 이후 새로 쌓인 기록·사실 " + since + "개</span>";
-  bar += '<span class="muted" style="font-size:12px;margin-left:auto">자기 이해 공정률 ' + pct + "% · 채울수록 정확해져요</span></div>";
+  if (pr && since) bar += '<span class="tag est">초상 이후 새로 쌓인 기록·사실 ' + since + "개</span>";
+  bar += '<span class="muted" style="font-size:12px;margin-left:auto">지도 완성도 ' + pct + "% · 채울수록 정확해져요</span></div>";
 
-  const headName = '<div class="pt-name">' + esc(hullNo(P)) + " · " + esc(b.name || "이름 없음") + (b.birthYear ? " · " + b.birthYear : "") + (b.region ? " · " + esc(b.region) : "") + (b.job ? " · " + esc(b.job) : "") + "</div>";
+  const headName = '<div class="pt-name">' + esc(b.name || "이름 없음") + (b.birthYear ? " · " + b.birthYear : "") + (b.region ? " · " + esc(b.region) : "") + (b.job ? " · " + esc(b.job) : "") + "</div>";
   const head = pr ? '<div class="pt-head">' + headName + '<div class="pt-arche">' + esc(pr.archetype) + '</div><div class="pt-line">' + esc(pr.headline || "") + "</div></div>"
     : '<div class="pt-head">' + headName + '<div class="pt-arche" style="color:var(--ink-4)">아직 이름 붙지 않은 초상</div><div class="pt-line">지금까지 쌓인 응답으로 뼈대만 그렸어요. "초상 그리기"를 누르면 Claude가 전체를 읽고 한 문장과 이름을 붙입니다.</div></div>';
   const sec = (t, body) => '<section class="pt-sec"><h5>' + t + "</h5>" + body + "</section>";
@@ -46,9 +46,9 @@ function viewPortrait() {
     if (pr.gaps) left += '<p class="muted" style="font-size:12px">근거가 약한 부분 · ' + esc(pr.gaps) + "</p>";
   } else {
     left += sec("ESSENCE · 본질", '<p class="muted">초상을 그리면 성격·가치·에너지·원하는 것이 어떻게 맞물리는지 서너 문장으로 정리돼요.</p>');
-    const facts = P.facts.filter((f) => f.area === "traits").slice(0, 4).map((f) => f.text);
+    const facts = P.ledger.filter((f) => f.cat === "mind").slice(0, 4).map(entryText);
     if (facts.length) left += sec("SELF-NOTES · 스스로 적은 나", list(facts));
-    const heavy = P.thoughts.items.filter((x) => x.status === "heavy").map((x) => x.label);
+    const heavy = P.tree.nodes.filter((x) => x.status === "heavy").map((x) => x.label);
     if (heavy.length) left += sec("CARGO · 마음을 차지하는 주제", '<div class="pt-tags">' + heavy.map((x) => "<span>" + esc(x) + "</span>").join("") + "</div>");
   }
   let right = "";
@@ -63,5 +63,5 @@ function viewPortrait() {
 
   return drawingHead("portrait", "한 사람을 한 장으로. 응답과 기록 전체를 Claude가 읽고 이름과 문장을 붙입니다. 아래의 수치와 목록은 당신의 응답에서 바로 계산돼요.") + bar +
     '<article class="drawing"><div class="pt">' + head + '<div class="stack" style="gap:22px">' + left + '</div><div class="stack" style="gap:22px">' + right + "</div></div>" +
-    drawingFoot("LD-01", "자기 초상", pr ? "REV." + pad2(pr.rev || 0) : "—", pr ? fmtDot(pr.at) : fmtDot(nowISO()), pr ? "Claude" : "자동 계산") + "</article>";
+    drawingFoot("I", "자기 초상", pr ? (pr.rev || 0) + "판" : "—", pr ? fmtDot(pr.at) : fmtDot(nowISO()), pr ? "Claude" : "자동 계산") + "</article>";
 }

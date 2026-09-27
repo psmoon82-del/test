@@ -1,28 +1,28 @@
 /* ============================================================ domain constants (generic — no personal data here) */
 const CH = [
-  { id: "basics", code: "00", stage: "기본설계", name: "제원", title: "나의 제원", mins: 2, frame: "자기소개의 기본 틀",
-    why: "배를 짓기 전에 제원표부터 정합니다. 이름, 나이, 사는 곳, 가족, 하는 일. 뒤에 나올 모든 해석의 기준점이에요." },
-  { id: "wheel", code: "01", stage: "선체 점검", name: "지금의 나", title: "지금 나는 어디가 기울어 있나", mins: 5, frame: "라이프 휠(Wheel of Life) · 코칭 도구",
+  { id: "basics", code: "00", stage: "기본", name: "기본 정보", title: "나는 누구인가", mins: 2, frame: "자기소개의 기본 틀",
+    why: "지도를 그리기 전에 기준점부터 찍습니다. 이름, 나이, 사는 곳, 가족, 하는 일. 뒤에 나올 모든 해석이 여기서 출발해요." },
+  { id: "wheel", code: "01", stage: "현재", name: "지금의 나", title: "지금 나는 어디가 기울어 있나", mins: 5, frame: "라이프 휠(Wheel of Life) · 코칭 도구",
     why: "삶의 여덟 영역마다 지금의 만족도와 나에게 중요한 정도를 따로 매깁니다. 둘의 차이가 큰 곳이 지금 손봐야 할 곳이에요." },
-  { id: "ipip", code: "02", stage: "선형", name: "타고난 결", title: "나는 어떤 결을 가진 사람인가", mins: 4, frame: "Big Five · Mini-IPIP 20문항(공개 척도)",
+  { id: "ipip", code: "02", stage: "성격", name: "타고난 결", title: "나는 어떤 결을 가진 사람인가", mins: 4, frame: "Big Five · Mini-IPIP 20문항(공개 척도)",
     why: "성격 심리학에서 가장 많이 검증된 5요인 모델의 간이 척도입니다. 좋고 나쁨이 아니라 어느 쪽으로 기울어 있는지를 봐요." },
-  { id: "values", code: "03", stage: "항로", name: "나를 움직이는 것", title: "결정적인 순간, 나는 무엇을 고르나", mins: 5, frame: "Schwartz 기본 가치 이론 · 딜레마 선택",
+  { id: "values", code: "03", stage: "가치", name: "나를 움직이는 것", title: "결정적인 순간, 나는 무엇을 고르나", mins: 5, frame: "Schwartz 기본 가치 이론 · 딜레마 선택",
     why: "무엇이 중요하냐고 물으면 누구나 좋은 답을 고릅니다. 그래서 둘 다 괜찮은 것 사이에서 하나를 고르게 해요. 선택이 쌓이면 실제 우선순위가 드러납니다." },
-  { id: "energy", code: "04", stage: "기관", name: "에너지와 일", title: "무엇이 나를 충전하고 무엇이 방전시키나", mins: 6, frame: "에너지 감사 · 크로노타입 · DISC 간이",
+  { id: "energy", code: "04", stage: "에너지", name: "에너지와 일", title: "무엇이 나를 충전하고 무엇이 방전시키나", mins: 6, frame: "에너지 감사 · 크로노타입 · DISC 간이",
     why: "같은 하루라도 어떤 일은 힘을 주고 어떤 일은 힘을 빼앗습니다. 활동별 에너지, 몰입 경험, 하루 리듬, 일하는 방식을 봐요." },
-  { id: "loves", code: "05", stage: "의장", name: "좋아하는 것", title: "나는 무엇을 좋아하는 사람인가", mins: 6, frame: "취향 드릴다운 · 좋아하는 이유",
+  { id: "loves", code: "05", stage: "취향", name: "좋아하는 것", title: "나는 무엇을 좋아하는 사람인가", mins: 6, frame: "취향 드릴다운 · 좋아하는 이유",
     why: "큰 분류에서 시작해 구체적인 것으로 내려갑니다. 무엇을 좋아하는지보다 왜 좋은지를 적을수록 취향의 공통분모가 보여요." },
-  { id: "thoughts", code: "06", stage: "화물", name: "마음속 주제", title: "나는 무엇을 싣고 다니나", mins: 6, frame: "마인드맵(think tree) 재검토",
-    why: "오래 머릿속을 차지해 온 주제들입니다. 예전 메모를 지금의 눈으로 다시 보고, 여전히 무거운지, 생각이 바뀌었는지, 내려놓았는지 표시해요." },
-  { id: "wants", code: "07", stage: "목적지", name: "원하는 것", title: "나는 어디로 가고 싶은가", mins: 6, frame: "Have · Do · Be · Learn · Give",
-    why: "갖고 싶은 것, 해보고 싶은 것, 되고 싶은 모습, 배우고 싶은 것, 나누고 싶은 것. 시기와 중요도를 매기면 인생 공정표의 미래 구간이 채워집니다." },
-  { id: "timeline", code: "08", stage: "항해일지", name: "연대기", title: "나는 어디서 와서 지금 여기에 있나", mins: 5, frame: "인생 공정표(Life Gantt)",
+  { id: "thoughts", code: "06", stage: "생각", name: "마음속 주제", title: "나는 무엇을 생각하며 사나", mins: 8, frame: "생각 나무(think tree)",
+    why: "머릿속을 차지하는 주제를 가지처럼 뻗어 그려요. 가운데에서 시작해 가지를 치고, 옮기고, 합칠 수 있어요. 가지마다 지금 얼마나 무거운지 표시하면 마음의 지형이 보입니다." },
+  { id: "wants", code: "07", stage: "목표", name: "원하는 것", title: "나는 어디로 가고 싶은가", mins: 6, frame: "Have · Do · Be · Learn · Give",
+    why: "갖고 싶은 것, 해보고 싶은 것, 되고 싶은 모습, 배우고 싶은 것, 나누고 싶은 것. 시기와 중요도를 매기면 인생 연표의 미래 구간이 채워집니다." },
+  { id: "timeline", code: "08", stage: "연대기", name: "연대기", title: "나는 어디서 와서 지금 여기에 있나", mins: 5, frame: "인생 연표(Life timeline)",
     why: "지나온 이정표와 앞으로의 계획을 하나의 시간축 위에 놓습니다. 추정으로 채운 연도는 확인하거나 고쳐 주세요." },
 ];
 const CH_BY = Object.fromEntries(CH.map((c) => [c.id, c]));
 const POST_STAGES = [
-  { id: "interview", code: "09", stage: "시운전", name: "AI 인터뷰", href: "#interview" },
-  { id: "portrait", code: "10", stage: "인도", name: "자기 초상", href: "#portrait" },
+  { id: "interview", code: "09", stage: "대화", name: "AI 인터뷰", href: "#interview" },
+  { id: "portrait", code: "10", stage: "초상", name: "자기 초상", href: "#portrait" },
 ];
 
 const WHEEL = [
@@ -116,23 +116,23 @@ const DILEMMAS = [
 
 const ACTS = [
   { id: "deep", t: "혼자 파고드는 분석·문제 해결" },
-  { id: "plan", t: "일정·계획 짜기 (공정표, 여행 계획)" },
-  { id: "coord", t: "여러 부서와 조율하는 회의" },
-  { id: "eng", t: "영어로 외국인과 회의·통화" },
+  { id: "plan", t: "일정·계획 짜기 (업무, 여행)" },
+  { id: "coord", t: "여러 사람·부서와 조율하는 회의" },
+  { id: "eng", t: "외국어로 대화·회의하기" },
   { id: "mail", t: "쏟아지는 메일·메신저 처리" },
   { id: "present", t: "사람들 앞에서 발표·보고" },
   { id: "teach", t: "후배 가르치기·코칭" },
   { id: "idea", t: "아이디어 떠올리고 적기" },
-  { id: "make", t: "손으로 만들기 (조립·프라모델·DIY)" },
+  { id: "make", t: "손으로 만들기 (조립·DIY·공예)" },
   { id: "gear", t: "전자기기 구경하고 세팅하기" },
   { id: "organize", t: "정리 시스템 만들기 (집·파일)" },
   { id: "learn", t: "새로운 기술 배우기 (코딩 등)" },
-  { id: "kids", t: "아이들과 놀기" },
+  { id: "kids", t: "아이·가족과 놀기" },
   { id: "family", t: "가족과 외출·여행" },
   { id: "drink", t: "술자리·회식" },
-  { id: "shorts", t: "쇼츠·SNS 넘기기" },
+  { id: "shorts", t: "짧은 영상·SNS 넘기기" },
   { id: "longform", t: "좋은 작품·지식 영상에 몰입해서 보기" },
-  { id: "sport", t: "운동 (농구 등)" },
+  { id: "sport", t: "운동하기" },
   { id: "cook", t: "요리하기" },
   { id: "photo", t: "사진 찍기" },
 ];
@@ -219,3 +219,42 @@ const DOMAINS = [
 ];
 const DOM_BY = Object.fromEntries(DOMAINS.map((d) => [d.id, d]));
 const AREA_DOMAIN = { basics: "life", wheel: "life", family: "life", timeline: "life", traits: "traits", values: "values", energy: "energy", work: "energy", loves: "loves", thoughts: "thoughts", wants: "wants" };
+
+/* ============================================================ ledger (원장): every recorded fact lives in one of these */
+const LEDGER_CATS = [
+  { id: "basic", name: "기본 정보", d: "신상, 학력, 자격, 연락처", subs: ["신상", "학력", "자격·면허", "연락·주소", "언어"] },
+  { id: "work", name: "일·경력", d: "직무, 경력, 성과, 역량", subs: ["현재 일", "경력", "성과", "기술·역량", "일하는 환경"] },
+  { id: "family", name: "가족·관계", d: "가족, 가까운 사람, 기념일", subs: ["가족 구성", "기념일", "친구·지인", "관계 메모"] },
+  { id: "health", name: "건강·의료", d: "상태, 병력, 약, 검진 수치", subs: ["건강 상태", "질환·병력", "복용약", "검진·수치", "알레르기", "생활 습관"] },
+  { id: "money", name: "재정·보험", d: "소득, 자산, 부채, 보험, 투자", subs: ["소득", "자산", "부채", "보험", "투자", "지출 습관"] },
+  { id: "home", name: "주거·생활", d: "집, 차, 동네, 생활 환경", subs: ["집", "차량", "동네", "생활 환경", "가전·기기"] },
+  { id: "routine", name: "습관·일정", d: "하루 일과, 운동, 수면, 정기 일정", subs: ["하루 일과", "운동", "수면", "식사", "정기 일정"] },
+  { id: "mind", name: "성향·가치", d: "성격, 가치관, 에너지, 몰입", subs: ["성격", "가치관", "에너지", "몰입", "강점·약점"] },
+  { id: "taste", name: "취향", d: "음식, 콘텐츠, 음악, 물건, 장소", subs: ["음식", "콘텐츠", "음악", "물건", "장소", "스타일"] },
+  { id: "thoughts", name: "생각·관심", d: "요즘 붙들고 있는 주제", subs: ["관심사", "고민", "아이디어"] },
+  { id: "goals", name: "목표·원하는 것", d: "갖고, 하고, 되고 싶은 것", subs: ["단기 목표", "장기 목표", "버킷리스트"] },
+  { id: "history", name: "연대기", d: "지나온 일과 이정표", subs: ["학창 시절", "일", "가족", "거주"] },
+  { id: "etc", name: "기타", d: "어디에도 안 맞는 것", subs: [] },
+];
+const CAT_BY = Object.fromEntries(LEDGER_CATS.map((c) => [c.id, c]));
+const CAT_IDS = LEDGER_CATS.map((c) => c.id);
+/* v3 fact areas -> ledger categories */
+const AREA_TO_CAT = { basics: "basic", wheel: "mind", traits: "mind", values: "mind", energy: "mind", work: "work", family: "family", loves: "taste", thoughts: "thoughts", wants: "goals", timeline: "history" };
+const SENS = [["normal", "일반"], ["sensitive", "민감"]];
+const CONF = [["sure", "확실"], ["est", "추정"]];
+
+/* purpose packs: what a helper (person or AI) needs for one kind of task */
+const PACKS = [
+  { id: "all", name: "전체 프로필", d: "모든 기록. 처음 만나는 AI에게 나를 소개할 때", cats: CAT_IDS, parts: ["basics", "mind", "taste", "thoughts", "goals", "history", "log"] },
+  { id: "career", name: "이력서·커리어", d: "이력서, 자기소개서, 이직, 커리어 설계", cats: ["basic", "work", "mind", "goals", "history"], parts: ["basics", "mind", "goals", "history"] },
+  { id: "health", name: "건강·의료", d: "진료 준비, 건강 상담, 운동·식단 설계", cats: ["basic", "health", "routine", "family"], parts: ["basics"] },
+  { id: "money", name: "재정·보험", d: "금융 상담, 보험 점검, 지출 관리", cats: ["basic", "family", "money", "home", "health", "goals"], parts: ["basics", "goals"] },
+  { id: "home", name: "이사·주거", d: "집 구하기, 동네 고르기, 생활 환경", cats: ["basic", "family", "home", "work", "routine", "money"], parts: ["basics", "taste"] },
+  { id: "taste", name: "추천받기", d: "쇼핑, 콘텐츠, 음악, 영화, 맛집", cats: ["basic", "taste", "routine"], parts: ["basics", "taste"] },
+  { id: "plan", name: "계획·일정", d: "할 일 설계, 일정 잡기, 목표 관리", cats: ["basic", "work", "routine", "goals", "thoughts"], parts: ["basics", "mind", "goals", "thoughts"] },
+  { id: "counsel", name: "마음 상담", d: "고민 상담, 심리 상담 준비", cats: ["basic", "mind", "thoughts", "family", "health", "history"], parts: ["basics", "mind", "thoughts", "history", "log"] },
+  { id: "study", name: "공부·자기계발", d: "영어 공부, 새 기술 배우기", cats: ["basic", "work", "routine", "goals", "mind", "taste"], parts: ["basics", "mind", "goals"] },
+];
+const PACK_BY = Object.fromEntries(PACKS.map((p) => [p.id, p]));
+/* starter branches for an empty think tree */
+const TREE_STARTERS = ["돈·일·미래", "사람·가족", "배움·취미", "공간·물건", "몸·마음"];

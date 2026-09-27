@@ -1,85 +1,107 @@
-/* ============================================================ HOME · 종합 현황판 */
+/* ============================================================ OVERVIEW · 개요 */
+/* plate caption: a quiet legend row under each map */
 function titleBlock(cells) {
-  return '<div class="tblock">' + cells.map(([k, v]) => "<div><b>" + esc(k) + "</b><span>" + v + "</span></div>").join("") + "</div>";
+  return '<dl class="tblock">' + cells.map(([k, v]) => "<div><dt>" + esc(k) + "</dt><dd>" + v + "</dd></div>").join("") + "</dl>";
 }
-function hullNo(P) { return "LD-" + (P.basics.birthYear || "0000"); }
+
+/* coverage chart: one ring sector per ledger category, contour lines filled by how much is recorded */
+function coverageSVG(P) {
+  const cats = LEDGER_CATS.filter((c) => c.id !== "etc");
+  const W = 300, c0 = W / 2, R1 = 58, R2 = 132, n = cats.length, gap = 0.035;
+  const arc = (r0, r1, a0, a1) => { const p = (r, a) => (c0 + Math.cos(a) * r).toFixed(1) + " " + (c0 + Math.sin(a) * r).toFixed(1); const lg = a1 - a0 > Math.PI ? 1 : 0; return "M" + p(r0, a0) + " L" + p(r1, a0) + " A" + r1 + " " + r1 + " 0 " + lg + " 1 " + p(r1, a1) + " L" + p(r0, a1) + " A" + r0 + " " + r0 + " 0 " + lg + " 0 " + p(r0, a0) + "Z"; };
+  let g = "";
+  [0.25, 0.5, 0.75, 1].forEach((f) => { g += '<circle cx="' + c0 + '" cy="' + c0 + '" r="' + (R1 + (R2 - R1) * f).toFixed(1) + '" style="fill:none;stroke:var(--rule);stroke-width:1"/>'; });
+  cats.forEach((c, i) => {
+    const a0 = -Math.PI / 2 + (i / n) * Math.PI * 2 + gap, a1 = -Math.PI / 2 + ((i + 1) / n) * Math.PI * 2 - gap;
+    const cnt = catCount(P, c.id), lv = cnt ? Math.min(1, 0.25 + Math.log2(1 + cnt) / 6) : 0;
+    g += '<path d="' + arc(R1, R2, a0, a1) + '" style="fill:var(--sheet-2);stroke:none"/>';
+    if (lv) g += '<path d="' + arc(R1, R1 + (R2 - R1) * lv, a0, a1) + '" style="fill:var(--accent);fill-opacity:' + (0.35 + lv * 0.55).toFixed(2) + '"><title>' + esc(c.name + " " + cnt + "개") + "</title></path>";
+    const am = (a0 + a1) / 2, lx = c0 + Math.cos(am) * (R2 + 12), ly = c0 + Math.sin(am) * (R2 + 12);
+    g += '<text x="' + lx.toFixed(1) + '" y="' + (ly + 3.5).toFixed(1) + '" text-anchor="' + (Math.abs(Math.cos(am)) < 0.3 ? "middle" : Math.cos(am) > 0 ? "start" : "end") + '" class="cov-l' + (cnt ? "" : " empty") + '">' + esc(c.name.split("·")[0]) + "</text>";
+  });
+  const pct = overall(P);
+  g += '<text x="' + c0 + '" y="' + (c0 + 6) + '" text-anchor="middle" class="cov-n">' + pct + '</text><text x="' + c0 + '" y="' + (c0 + 24) + '" text-anchor="middle" class="cov-u">% 완성</text>';
+  return '<svg viewBox="-40 -14 ' + (W + 80) + " " + (W + 28) + '" width="100%" style="max-width:380px;display:block;margin:0 auto" role="img" aria-label="원장 분류별 기록량과 지도 완성도 ' + pct + '%">' + g + "</svg>";
+}
+
+function nudgeCard() {
+  const N = S.NUDGE; if (!N || !Array.isArray(N.questions)) return "";
+  const open = N.questions.map((q, i) => ({ q, i })).filter((o) => !o.q.done && !o.q.skip);
+  if (!open.length) return "";
+  return '<section class="sheet pad nudge"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">This week · 이번 주 질문</div><h3>' + open.length + '개만 답해 주세요</h3></div><span class="mono muted" style="font-size:11px">' + esc(fmtDot(N.at)) + "</span></div>" +
+    open.map(({ q, i }) => '<div class="nq"><div class="nq-q"><span class="tag">' + esc(CAT_BY[q.cat]?.name || "기타") + "</span> " + esc(q.q) + "</div>" + (q.hint ? '<div class="muted" style="font-size:12px">' + esc(q.hint) + "</div>" : "") +
+      '<div class="row" style="flex-wrap:nowrap;align-items:flex-end"><textarea class="input" id="nq_' + i + '" rows="2" placeholder="짧게 적어도 충분해요"></textarea><span class="stack" style="gap:4px"><button class="btn primary sm" data-act="nudgeAnswer" data-i="' + i + '">저장</button><button class="btn ghost sm" data-act="nudgeSkip" data-i="' + i + '">건너뛰기</button></span></div></div>').join("") + "</section>";
+}
 
 function viewHome() {
   const P = S.P, pct = overall(P), na = nextAction(P);
   const b = P.basics, name = b.nick || b.name || "나";
   const doneN = CH.filter((c) => P.done[c.id]).length;
-  const ivFacts = P.facts.filter((f) => f.src === "interview").length;
-  const wantDoing = P.wants.items.filter((w) => w.status === "doing").length;
   const pr = S.AI.portrait;
+  const stale = P.ledger.filter(isStale).length;
 
   let banners = "";
-  if (S.mode !== "cloud") banners += '<div class="banner" style="margin-bottom:14px"><b>미리보기 모드</b><span>이 화면에서는 저장소에 연결되지 않아 입력한 내용이 저장되지 않아요. Claude 앱에서 열면 저장돼요.</span></div>';
-  if (S.firstRun && S.seeded && !P.dismissSeedNote) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>기존 기록으로 미리 채워 두었어요.</b> 엑셀 메모 18개 시트와 지금까지의 대화에서 좋아하는 것 ' + allLoveItems(P).length + "개, 마음속 주제 " + P.thoughts.items.length + "개, 원하는 것 " + P.wants.items.length + "개, 기록 " + S.LOG.items.length + '건을 옮겼어요. 추정한 연도에는 <span class="tag est">추정</span> 표시가 있어요. 여정을 따라가며 확인하고 고쳐 주세요.</span><button class="btn sm ghost" data-act="dismissSeed">닫기</button></div>';
+  if (S.mode === "local") banners += '<div class="banner" style="margin-bottom:14px"><b>이 브라우저에만 저장돼요</b><span>claude.ai 밖에서 열려 Claude 저장소에 연결되지 않았어요. 다른 기기에서는 보이지 않아요.</span></div>';
+  else if (S.mode !== "cloud") banners += '<div class="banner" style="margin-bottom:14px"><b>저장되지 않아요</b><span>이 화면에서는 저장소에 연결되지 않았어요. 연결 상태를 확인해 주세요.</span></div>';
+  if (P.meta.migration && !P.meta.migration.reviewed) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>새 구조로 옮겼어요.</b> 예전에 알게 된 사실 ' + P.meta.migration.facts + "개를 원장으로, 마음속 주제를 생각 나무(" + P.meta.migration.nodes + '개 가지·주제)로 옮겼어요. 분류가 맞는지 한 번 확인해 주세요.</span><button class="btn sm primary" data-act="go" data-view="review">확인하기</button></div>';
+  if (S.firstRun && S.seeded && !P.dismissSeedNote) banners += '<div class="banner info" style="margin-bottom:14px;align-items:center"><span style="flex:1"><b>기존 기록으로 미리 채워 두었어요.</b> 좋아하는 것 ' + allLoveItems(P).length + "개, 생각 나무 " + P.tree.nodes.length + "개, 원하는 것 " + P.wants.items.length + "개, 기록 " + S.LOG.items.length + '건을 옮겼어요. 추정한 연도에는 <span class="tag est">추정</span> 표시가 있어요.</span><button class="btn sm ghost" data-act="dismissSeed">닫기</button></div>';
 
-  // progress trend
-  const pl = P.progressLog.map((x) => ({ t: new Date(x.d + "T12:00:00"), y: x.p }));
-  const trend = pl.length >= 2 ? lineSVG(pl, { h: 150, aria: "공정률 추이" }) :
-    '<div class="empty" style="padding:26px 8px">오늘부터 매일의 공정률이 기록돼요.<br>내일 다시 열면 추이선이 그려집니다.</div>';
+  const recent = S.LOG.items.slice().sort((a, c) => String(c.date).localeCompare(String(a.date)) || String(c.at).localeCompare(String(a.at))).slice(0, 4);
+  const recFacts = P.ledger.slice().sort((a, c) => String(c.at).localeCompare(String(a.at))).slice(0, 5);
+  const chRows = CH.map((c) => { const st = chState(P, c.id), p = P.done[c.id] ? 100 : chProgress(P, c.id);
+    return '<button class="chrow ' + st + '" data-act="openCh" data-id="' + c.id + '"><span class="mono">' + c.code + '</span><span class="nm">' + esc(c.name) + '</span><span class="bar"><i style="width:' + p + '%"></i></span><span class="mono v">' + (st === "done" ? "완료" : p + "%") + "</span></button>"; }).join("");
 
-  // stage track
-  const stagesAll = CH.map((c) => ({ id: c.id, code: c.code, stage: c.stage, name: c.name, st: chState(P, c.id), go: "openCh" }))
-    .concat([{ id: "interview", code: "09", stage: "시운전", name: "AI 인터뷰", st: ivFacts >= 5 ? "done" : ivFacts ? "doing" : "todo", go: "interview" },
-      { id: "portrait", code: "10", stage: "인도", name: "자기 초상", st: pr ? "done" : "todo", go: "portrait" }]);
-  const nextIdx = stagesAll.findIndex((x) => x.st !== "done");
-  const doneRun = stagesAll.findIndex((x) => x.st !== "done");
-  const fillPct = ((doneRun === -1 ? stagesAll.length - 1 : Math.max(0, doneRun - 0.5)) / (stagesAll.length - 1)) * (100 - 100 / 11);
-  const stages = '<div class="stages" role="list">' + '<span class="fill" style="width:' + (doneRun <= 0 ? 0 : fillPct) + '%"></span>' + stagesAll.map((x, i) =>
-    '<a role="listitem" href="#" class="stg ' + x.st + (i === nextIdx ? " next" : "") + '" data-act="' + (x.go === "openCh" ? "openCh" : "go") + '" data-id="' + x.id + '" data-view="' + x.go + '"><span class="dia"></span><span class="c">' + x.code + '</span><span class="n">' + esc(x.stage) + '</span><span class="s">' + esc(x.name) + "</span></a>").join("") + "</div>";
-
-  const recent = S.LOG.items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.at).localeCompare(String(a.at))).slice(0, 5);
-  const recFacts = P.facts.slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 5);
-
-  return '<div class="page-head"><div><div class="eyebrow">Dock status · 종합 현황판</div><h1>' + esc(name) + '의 라이프 독</h1><p class="lede">나를 짓고, 점검하고, 고쳐 쓰는 곳. 여정으로 뼈대를 세우고, 인터뷰와 기록으로 계속 보수합니다.</p></div>' +
-    titleBlock([["HULL NO.", esc(hullNo(P))], ["OWNER", esc(b.name || "-")], ["REV", revStr()], ["UPDATED", fmtDot(P.updatedAt)], ["CHAPTERS", doneN + "/9"], ["SCALE", "1 : 1"]]) + "</div>" +
+  return '<div class="page-head"><div><div class="eyebrow">Atlas · 나의 지도책</div><h1>' + esc(name) + '의 지도책</h1><p class="lede">나에 대한 모든 것을 분류해 쌓고, 필요할 때 용도별로 꺼내 쓰는 곳. 채울수록 AI가 나를 더 정확히 도와요.</p></div>' +
+    titleBlock([["판", revStr()], ["고친 날", fmtDot(P.updatedAt)], ["원장", P.ledger.length + "항목"], ["탐구", doneN + "/9장"]]) + "</div>" +
     banners +
-    '<section class="sheet dock-hero lift"><div class="l">' +
-      '<div class="eyebrow">자기 이해 공정률</div>' +
-      '<div class="hero-num"><div class="n">' + pct + '<small>%</small></div><div class="cap">9개 챕터 · 시운전 인터뷰 · 초상과 지도를 합친 진척도</div></div>' +
-      '<div class="meter"><i style="width:' + pct + '%"></i></div>' +
-      (pr ? '<div><div class="eyebrow" style="margin-bottom:4px">현재 초상 ' + '<span class="mono">REV.' + pad2(pr.rev || 0) + '</span></div><div class="archetype">' + esc(pr.archetype) + '</div><div class="archetype-sub">' + esc(pr.headline || "") + "</div></div>"
-        : '<div><div class="eyebrow" style="margin-bottom:4px">현재 초상</div><div class="archetype" style="color:var(--ink-3)">아직 그려지지 않았어요</div><div class="archetype-sub">여정을 마치면 Claude가 당신을 한 장의 초상으로 정리합니다.</div></div>') +
-      '<div class="next-card"><div><div class="eyebrow" style="color:var(--accent)">다음 작업</div><div class="t">' + esc(na.label) + '</div><div class="d">' + esc(na.desc) + '</div></div><button class="btn accent" data-act="' + (na.kind === "ch" ? "openCh" : "go") + '" data-id="' + (na.ch ? na.ch.id : "") + '" data-view="' + na.kind + '">' + (na.kind === "ch" ? "열기" : "이동") + I.arrow + "</button></div>" +
-    '</div><div class="r"><div class="row" style="justify-content:space-between"><div class="eyebrow">공정률 추이</div><span class="mono muted" style="font-size:11px">' + pl.length + "일 기록</span></div>" + trend +
-      '<div class="stack" style="gap:6px;margin-top:auto"><div class="eyebrow">개정 이력</div>' + (P.revLog.length ? P.revLog.slice(-3).reverse().map((r) => '<div class="row" style="gap:8px;font-size:12.5px;flex-wrap:nowrap"><span class="rev-tri">' + pad2(r.rev) + '</span><span style="flex:1">' + esc(r.note) + '</span><span class="mono muted" style="font-size:10.5px">' + fmtDot(r.at) + "</span></div>").join("") : '<div class="muted" style="font-size:12.5px">챕터를 마치거나 초상을 그리면 REV가 올라가요.</div>') + "</div>" +
+    '<section class="hero sheet"><div class="hero-l">' + coverageSVG(P) + '<p class="muted" style="font-size:12px;text-align:center">둘레 칸은 원장 분류, 칠해진 깊이는 기록한 양이에요.</p></div>' +
+      '<div class="hero-r"><div class="next-card"><div><div class="eyebrow" style="color:var(--accent)">다음에 할 일</div><div class="t">' + esc(na.label) + '</div><div class="d">' + esc(na.desc) + '</div></div><button class="btn accent" data-act="' + (na.kind === "ch" ? "openCh" : "go") + '" data-id="' + (na.ch ? na.ch.id : "") + '" data-view="' + na.kind + '">' + (na.kind === "ch" ? "열기" : "이동") + I.arrow + "</button></div>" +
+      (pr ? '<div class="arche-box"><div class="eyebrow">지금의 초상 · ' + ((pr.rev || 0)) + '판</div><div class="archetype">' + esc(pr.archetype) + '</div><div class="archetype-sub">' + esc(pr.headline || "") + "</div></div>" : "") +
+      '<div class="quick"><button class="btn" data-act="go" data-view="ledger">' + I.ledger + '원장에 적기</button><button class="btn" data-act="go" data-view="log">' + I.log + '기록 남기기</button><button class="btn" data-act="go" data-view="export">' + I.pack + "팩 꺼내기</button></div>" +
+      (stale ? '<p class="stale-note">1년 넘게 확인하지 않은 항목이 <b>' + stale + '개</b> 있어요. <button class="link" data-act="go" data-view="ledger">원장에서 확인</button></p>' : "") +
     "</div></section>" +
-    '<section class="sheet kpis">' +
-      kpi("완료 챕터", doneN + " / 9", "진행 중 " + CH.filter((c) => chState(P, c.id) === "doing").length) +
-      kpi("알게 된 사실", P.facts.length, "인터뷰에서 " + ivFacts) +
-      kpi("원하는 것", P.wants.items.length, "진행 중 " + wantDoing) +
-      kpi("정비 일지", S.LOG.items.length, "최근 " + fmtYM(recent[0]?.date || "")) +
-    "</section>" +
-    '<section class="sheet" style="margin-top:14px;padding:14px 16px 10px"><div class="row" style="justify-content:space-between"><div class="eyebrow">건조 공정 · 11 stages</div><span class="muted" style="font-size:12px">◆ 완료 · ◈ 진행 · ◇ 대기</span></div>' + stages + "</section>" +
-    '<div class="row" style="justify-content:space-between;margin:26px 0 10px"><h3 style="font-size:16px">도면</h3><span class="muted" style="font-size:12px">쌓인 데이터로 자동으로 그려지는 네 장의 도면</span></div>' +
+    nudgeCard() +
+    '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">원장</h2><a href="#ledger" data-go="ledger" style="font-size:12.5px">전체 보기</a></div>' +
+    '<div class="cat-grid">' + LEDGER_CATS.filter((c) => c.id !== "etc").map((c) => { const n = catCount(P, c.id), st = P.ledger.filter((e) => e.cat === c.id && isStale(e)).length;
+      return '<button class="cat-card' + (n ? "" : " empty") + '" data-act="ledOpen" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span class="d">' + esc(c.d) + '</span><span class="n mono">' + (n ? n + "개" : "비어 있음") + (st ? ' · <i class="stale-dot"></i>확인 ' + st : "") + "</span></button>"; }).join("") + "</div>" +
+    '<div class="grid2" style="margin-top:28px"><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>탐구</h3><span class="muted" style="font-size:12px">고르기 위주의 9개 장</span></div><div class="chrows">' + chRows + "</div></section>" +
+    '<section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>최근에 알게 된 것</h3><a href="#interview" data-go="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
+      (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:72px;justify-content:center">' + esc(CAT_BY[f.cat].name) + '</span><span style="flex:1">' + esc(entryText(f)) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') + "</ul></section></div>" +
+    '<div class="row" style="justify-content:space-between;margin:28px 0 10px"><h2 class="sec-h">지도</h2><span class="muted" style="font-size:12px">쌓인 기록으로 자동으로 그려져요</span></div>' +
     '<div class="dwg-cards">' +
-      dwgCard("portrait", "LD-01", "자기 초상", pr ? "REV." + pad2(pr.rev || 0) : "미작성", miniPortrait(P)) +
-      dwgCard("map", "LD-02", "살아있는 지도", S.AI.map ? "주제 " + S.AI.map.themes.length : "노드 " + mapNodeCount(P), miniMap(P)) +
-      dwgCard("gantt", "LD-03", "인생 공정표", P.timeline.events.length + "개 이정표", miniGantt(P)) +
-      dwgCard("metrics", "LD-04", "지표", "휠·성격·가치", miniRadar(P)) +
+      dwgCard("portrait", "I", "자기 초상", pr ? (pr.rev || 0) + "판" : "미작성", miniPortrait(P)) +
+      dwgCard("map", "II", "관계 지도", S.AI.map ? "주제 " + S.AI.map.themes.length : "노드 " + mapNodeCount(P), miniMap(P)) +
+      dwgCard("gantt", "III", "인생 연표", P.timeline.events.length + "개 이정표", miniGantt(P)) +
+      dwgCard("metrics", "IV", "지표", "휠·성격·가치", miniRadar(P)) +
     "</div>" +
-    '<div class="grid2" style="margin-top:26px">' +
-      '<section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="font-size:15px">최근 정비 일지</h3><a href="#log" data-act="go" data-view="log" style="font-size:12.5px">전체 보기</a></div><ul class="list-plain">' +
-        (recent.length ? recent.map((r) => '<li><span class="ltype" style="min-width:52px"><i class="dot" style="background:' + (RT_BY[r.type]?.color || "var(--ink-3)") + '"></i>' + esc(RT_BY[r.type]?.name || "") + '</span><span style="flex:1">' + esc(cut(r.text, 90)) + '</span><span class="mono muted" style="font-size:11px">' + esc(fmtYM(r.date)) + "</span></li>").join("") : '<li class="muted">아직 기록이 없어요.</li>') +
-      '</ul></section><section class="sheet pad"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="font-size:15px">최근에 알게 된 것</h3><a href="#interview" data-act="go" data-view="interview" style="font-size:12.5px">인터뷰로 더 채우기</a></div><ul class="list-plain">' +
-        (recFacts.length ? recFacts.map((f) => '<li><span class="tag" style="min-width:64px;justify-content:center">' + esc(AREAS[f.area] || f.area) + '</span><span style="flex:1">' + esc(f.text) + "</span></li>").join("") : '<li class="muted">아직 없어요.</li>') +
-      "</ul></section></div>" +
+    '<section class="sheet pad" style="margin-top:28px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>최근 기록</h3><a href="#log" data-go="log" style="font-size:12.5px">전체 보기</a></div><ul class="list-plain">' +
+      (recent.length ? recent.map((r) => '<li><span class="ltype" style="min-width:52px"><i class="dot" style="background:' + (RT_BY[r.type]?.color || "var(--ink-3)") + '"></i>' + esc(RT_BY[r.type]?.name || "") + '</span><span style="flex:1">' + esc(cut(r.text, 90)) + '</span><span class="mono muted" style="font-size:11px">' + esc(fmtYM(r.date)) + "</span></li>").join("") : '<li class="muted">아직 기록이 없어요.</li>') + "</ul></section>" +
     '<details class="diag diag-home"><summary>연결 상태</summary><div class="diag-body">' + diagHTML() + "</div></details>";
+}
+
+/* ---------------- migration review ---------------- */
+function viewReview() {
+  const P = S.P, m = P.meta.migration;
+  const rows = P.ledger.map((e, i) => ({ e, i })).filter((o) => o.e.mig);
+  const byCat = LEDGER_CATS.map((c) => ({ c, xs: rows.filter((o) => o.e.cat === c.id) })).filter((x) => x.xs.length);
+  return '<div class="page-head"><div><div class="eyebrow">Review · 옮긴 내용 확인</div><h1>새 구조로 옮긴 내용</h1><p class="lede">예전 버전에서 "알게 된 사실"로 쌓였던 항목을 원장 분류에 나눠 넣었어요. 분류가 틀린 항목은 바꾸고, 필요 없는 항목은 지워 주세요. 예전 데이터는 따로 보관돼 있어요.</p></div></div>' +
+    '<div class="grid2" style="margin-bottom:18px"><section class="sheet pad"><div class="eyebrow">원장</div><div class="big-n">' + rows.length + '<small>항목</small></div><p class="muted" style="font-size:12.5px">' + byCat.map((x) => x.c.name + " " + x.xs.length).join(" · ") + "</p></section>" +
+    '<section class="sheet pad"><div class="eyebrow">생각 나무</div><div class="big-n">' + P.tree.nodes.length + '<small>가지·주제</small></div><p class="muted" style="font-size:12.5px">예전의 다섯 그룹은 가지로, 주제는 그 아래로, 연관어는 주제 아래 잔가지로 옮겼어요.</p><button class="btn sm" data-act="go" data-view="tree">생각 나무 보기' + I.arrow + "</button></section></div>" +
+    byCat.map(({ c, xs }) => '<section class="led-sec"><header><h2>' + esc(c.name) + '</h2><span class="muted">' + xs.length + "개</span></header>" + xs.map(({ e, i }) =>
+      '<div class="rv-row"><select class="input" data-bind="P.ledger.' + i + '.cat" data-rerender="1" aria-label="분류">' + LEDGER_CATS.map((x) => '<option value="' + x.id + '"' + (x.id === e.cat ? " selected" : "") + ">" + x.name + "</option>").join("") + '</select><span class="rv-t">' + esc(e.value) + '<span class="src">' + esc(srcLabel(e.src)) + '</span></span><button class="btn sm ghost" data-act="entryDel" data-id="' + e.id + '" aria-label="지우기">' + I.trash + "</button></div>").join("") + "</section>").join("") +
+    '<div class="row" style="justify-content:flex-end;margin-top:18px">' + (m && m.reviewed ? '<span class="muted">확인을 마쳤어요.</span>' : '<button class="btn primary" data-act="reviewDone">모두 확인했어요</button>') + "</div>";
 }
 function kpi(l, v, d) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(d) + "</div></div>"; }
 function dwgCard(view, no, name, meta, preview) {
-  return '<a href="#' + view + '" class="sheet dwg-card" data-act="go" data-view="' + view + '"><div class="pv">' + preview + '</div><div class="meta"><div><div class="mono muted" style="font-size:10.5px">' + no + "</div><b>" + esc(name) + '</b></div><span class="tag">' + esc(meta) + "</span></div></a>";
+  return '<a href="#' + view + '" class="sheet dwg-card" data-act="go" data-view="' + view + '"><div class="pv">' + preview + '</div><div class="meta"><div><div class="mono muted" style="font-size:10.5px">도판 ' + no + "</div><b>" + esc(name) + '</b></div><span class="tag">' + esc(meta) + "</span></div></a>";
 }
 function miniPortrait(P) {
   const pr = S.AI.portrait;
   if (!pr) return placeholderSVG("초상 미작성");
-  return '<div style="padding:14px 18px;text-align:left;width:100%"><div class="mono muted" style="font-size:9.5px;letter-spacing:.14em">' + esc(hullNo(P)) + '</div><div style="font-family:var(--f-serif);font-size:22px;font-weight:700;line-height:1.25;margin:6px 0">' + esc(pr.archetype) + '</div><div style="font-size:11.5px;color:var(--ink-2);line-height:1.5">' + esc(cut(pr.headline, 60)) + "</div></div>";
+  return '<div style="padding:14px 18px;text-align:left;width:100%"><div class="mono muted" style="font-size:9.5px;letter-spacing:.14em">' + '자기 초상' + '</div><div style="font-family:var(--f-serif);font-size:22px;font-weight:700;line-height:1.25;margin:6px 0">' + esc(pr.archetype) + '</div><div style="font-size:11.5px;color:var(--ink-2);line-height:1.5">' + esc(cut(pr.headline, 60)) + "</div></div>";
 }
 function miniMap(P) {
-  const counts = { values: valueScores(P).filter((v) => v.n).length ? 5 : 0, loves: allLoveItems(P).length, energy: energyLists(P).c.length, thoughts: P.thoughts.items.length, wants: P.wants.items.length, life: 4, traits: ipipScores(P).O.n ? 5 : 0 };
+  const counts = { values: valueScores(P).filter((v) => v.n).length ? 5 : 0, loves: allLoveItems(P).length, energy: energyLists(P).c.length, thoughts: P.tree.nodes.length, wants: P.wants.items.length, life: 4, traits: ipipScores(P).O.n ? 5 : 0 };
   const W = 200, H = 130, cx = 100, cy = 65; let g = "";
   DOMAINS.forEach((d, i) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / DOMAINS.length; const x = cx + Math.cos(a) * 44, y = cy + Math.sin(a) * 42;

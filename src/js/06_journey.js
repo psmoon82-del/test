@@ -1,4 +1,4 @@
-/* ============================================================ JOURNEY · 안내된 여정 */
+/* ============================================================ EXPLORE · 탐구 */
 function curCh() {
   if (!S.ui.ch || !CH_BY[S.ui.ch]) { const n = CH.find((c) => !S.P.done[c.id]); S.ui.ch = (n || CH[0]).id; }
   return CH_BY[S.ui.ch];
@@ -8,19 +8,19 @@ function hint(label, text) { return text ? '<div class="qhint"><b>' + esc(label)
 
 /* ---------------- steps per chapter ---------------- */
 const STEPS = {
-  basics: () => [{ label: "제원", html: stepBasics, ok: () => true }],
+  basics: () => [{ label: "기본 정보", html: stepBasics, ok: () => true }],
   wheel: () => [0, 1, 2, 3].map((k) => ({ label: WHEEL.slice(k * 2, k * 2 + 2).map((w) => w.name).join("·"), html: () => stepWheel(k), ok: () => WHEEL.slice(k * 2, k * 2 + 2).every((w) => { const a = S.P.wheel.areas[w.id]; return a && a.sat != null && a.imp != null; }) })),
   ipip: () => [0, 1, 2, 3, 4].map((k) => ({ label: k * 4 + 1 + "–" + (k * 4 + 4), html: () => stepIpip(k), ok: () => IPIP.slice(k * 4, k * 4 + 4).every((x) => S.P.ipip.answers[x.n] != null) })),
   values: () => DILEMMAS.map((d, i) => ({ label: "", html: () => stepDilemma(i), ok: () => !!S.P.values.picks[i] })),
   energy: () => [
     { label: "활동 1", html: () => stepActs(0), ok: () => ACTS.slice(0, 10).every((a) => S.P.energy.acts[a.id]) },
-    { label: "활동 2", html: () => stepActs(1), ok: () => ACTS.slice(10).every((a) => S.P.energy.acts[a.id]) },
+    { label: "활동 2", html: () => stepActs(1), ok: () => allActs(S.P).slice(10).every((a) => S.P.energy.acts[a.id]) },
     { label: "몰입", html: stepFlow, ok: () => true },
     { label: "리듬", html: stepChrono, ok: () => CHRONO.every((q) => S.P.energy.chrono[q.id] != null) },
     { label: "일하는 방식", html: stepDisc, ok: () => DISC_PAIRS.every((_, i) => S.P.energy.disc[i]) },
   ],
   loves: () => [{ label: "탐색", html: stepLoves, ok: () => true }],
-  thoughts: () => [{ label: "재검토", html: stepThoughts, ok: () => true }],
+  thoughts: () => [{ label: "생각 나무", html: stepThoughts, ok: () => true }],
   wants: () => [{ label: "목적지", html: stepWants, ok: () => true }],
   timeline: () => [{ label: "이정표", html: stepTimeline, ok: () => true }],
 };
@@ -48,12 +48,12 @@ function viewJourney() {
     if (!P.done[ch.id]) foot += '<button class="btn signal" data-act="chDone">챕터 완료</button>';
     const ni = CH.findIndex((c) => c.id === ch.id);
     if (ni < CH.length - 1) foot += '<button class="btn ' + (P.done[ch.id] ? "primary" : "") + '" data-act="openCh" data-id="' + CH[ni + 1].id + '">다음 챕터 · ' + esc(CH[ni + 1].name) + I.arrow + "</button>";
-    else foot += '<button class="btn ' + (P.done[ch.id] ? "primary" : "") + '" data-act="go" data-view="interview">시운전(AI 인터뷰)으로' + I.arrow + "</button>";
+    else foot += '<button class="btn ' + (P.done[ch.id] ? "primary" : "") + '" data-act="go" data-view="interview">AI 인터뷰로' + I.arrow + "</button>";
   }
   foot += "</div>";
   const needHint = !onResult && cur && !canNext ? '<p class="muted" style="font-size:12px;text-align:right;margin-top:8px">모든 문항에 답하면 다음으로 넘어갈 수 있어요.</p>' : "";
 
-  return '<div class="page-head"><div><div class="eyebrow">Journey · 설계와 건조</div><h1>안내된 여정</h1><p class="lede">아홉 개의 챕터를 차례로 지나며 나라는 배의 뼈대를 세웁니다. 순서를 건너뛰어도 괜찮아요. 모든 답은 바로 저장돼요.</p></div></div>' +
+  return '<div class="page-head"><div><div class="eyebrow">Explore · 탐구</div><h1>탐구</h1><p class="lede">아홉 개의 장을 지나며 나라는 지도의 윤곽을 그립니다. 대부분 고르기만 하면 돼요. 순서를 건너뛰어도 괜찮아요. 모든 답은 바로 저장돼요.</p></div></div>' +
     '<div class="jr">' + idx + '<section class="sheet lift" id="chSheet">' + head + body + foot + "</section></div>" + needHint;
 }
 
@@ -64,7 +64,7 @@ function stepBasics() {
   const t = (k, label, ph) => '<div class="field"><label for="b_' + k + '">' + label + '</label><textarea class="input" id="b_' + k + '" rows="3" data-bind="P.basics.' + k + '" placeholder="' + esc(ph || "") + '">' + esc(b[k] || "") + "</textarea></div>";
   return '<div class="stack">' +
     (b.seeded && !b.confirmed ? '<div class="banner info">기존 메모에서 채운 내용이에요. 출생년도와 자녀 나이는 메모 속 나이 기록으로 추정했어요. 틀린 곳을 고치고 아래 버튼을 눌러 주세요.</div>' : "") +
-    '<div class="grid2">' + f("name", "이름") + f("nick", "불리고 싶은 호칭 (선택)", "예: 성문") + f("birthYear", "출생년도" + (b.birthEst ? ' <span class="tag est">추정</span>' : ""), "예: 1982", "num") + f("region", "사는 곳") + "</div>" +
+    '<div class="grid2">' + f("name", "이름") + f("nick", "불리고 싶은 호칭 (선택)", "예: 별명") + f("birthYear", "출생년도" + (b.birthEst ? ' <span class="tag est">추정</span>' : ""), "예: 1982", "num") + f("region", "사는 곳") + "</div>" +
     f("job", "하는 일", "회사, 직무, 직책") + t("family", "가족", "함께 사는 사람, 가까운 가족") + t("career", "일의 이력 (선택)", "어떤 일을 해 왔는지") + t("intro", "나를 한 문장으로 소개한다면 (선택)", "지금 떠오르는 대로") +
     '<div class="row"><button class="btn ' + (b.confirmed ? "" : "primary") + '" data-act="basicsConfirm">' + (b.confirmed ? "확인 완료 ✓" : "이 내용이 맞아요") + "</button>" + (b.confirmed ? '<span class="muted" style="font-size:12.5px">언제든 다시 고칠 수 있어요.</span>' : "") + "</div></div>";
 }
@@ -102,9 +102,9 @@ function stepDilemma(i) {
 
 /* ---------------- CH04 energy ---------------- */
 function stepActs(part) {
-  const list = part === 0 ? ACTS.slice(0, 10) : ACTS.slice(10);
+  const list = part === 0 ? ACTS.slice(0, 10) : allActs(S.P).slice(10);
   return '<p class="muted" style="margin-bottom:12px">이 활동을 하고 나면 보통 어떤가요? <b style="color:var(--c-energy)">충전</b>은 하고 나면 힘이 나는 것, <b style="color:var(--crit)">방전</b>은 잘하더라도 진이 빠지는 것.</p><div class="acts">' +
-    list.map((a) => { const v = S.P.energy.acts[a.id]; return '<div class="act ' + (v || "") + '"><span class="nm">' + esc(a.t) + '</span><span class="seg">' + [["c", "충전"], ["n", "보통"], ["d", "방전"]].map(([k, l]) => '<button class="' + k + (v === k ? " on" : "") + '" data-act="act" data-a="' + a.id + '" data-v="' + k + '">' + l + "</button>").join("") + "</span></div>"; }).join("") + "</div>";
+    list.map((a) => { const v = S.P.energy.acts[a.id]; return '<div class="act ' + (v || "") + '"><span class="nm">' + esc(a.t) + (a.custom ? ' <button class="x-btn" data-act="actDel" data-id="' + a.id + '" aria-label="이 활동 지우기">×</button>' : "") + '</span><span class="seg">' + [["c", "충전"], ["n", "보통"], ["d", "방전"]].map(([k, l]) => '<button class="' + k + (v === k ? " on" : "") + '" data-act="act" data-a="' + a.id + '" data-v="' + k + '">' + l + "</button>").join("") + "</span></div>"; }).join("") + "</div>" + (part === 1 ? '<div class="adder" style="grid-template-columns:minmax(0,1fr) auto;margin-top:12px"><input class="input" id="newAct" placeholder="목록에 없는 나의 활동 추가 (예: 캠핑 가기)"><button class="btn" data-act="actAdd">' + I.plus + "추가</button></div>" : "");
 }
 function stepFlow() {
   const e = S.P.energy, h = (S.P.hints && S.P.hints.energy) || {};
@@ -140,43 +140,19 @@ function stepLoves() {
     '<div class="stack"><div><div class="flabel" style="margin-bottom:8px">중분류 · 끌리는 것을 모두 켜 주세요</div><div class="row" style="gap:6px">' + subs.map((s) => '<button class="chip ' + (x.subs.includes(s) ? "on" : "") + '" data-act="loveSub" data-v="' + esc(s) + '">' + esc(s) + "</button>").join("") +
     '<span class="row" style="gap:6px"><input class="input" id="newSub" placeholder="직접 추가" style="width:130px;padding:5px 9px;font-size:12.5px"><button class="btn sm" data-act="loveSubAdd">추가</button></span></div></div>' +
     '<div><div class="flabel" style="margin-bottom:8px">소분류 · 구체적으로 좋아하는 것과 그 이유</div><div class="items">' + (items || '<div class="empty">아직 없어요. 아래에서 추가해 보세요.</div>') + "</div></div>" +
-    '<div class="adder"><input class="input" id="newLoveName" placeholder="좋아하는 것 (예: 진주냉면)"><input class="input" id="newLoveWhy" placeholder="이유 (선택)"><button class="btn primary" data-act="loveAdd">' + I.plus + "추가</button></div>" +
+    '<div class="adder"><input class="input" id="newLoveName" placeholder="좋아하는 것 (예: 평양냉면)"><input class="input" id="newLoveWhy" placeholder="이유 (선택)"><button class="btn primary" data-act="loveAdd">' + I.plus + "추가</button></div>" +
     '<div class="row" style="justify-content:space-between;margin-top:6px"><button class="btn ghost" data-act="loveCat" data-id="">' + I.back + "분류 목록</button>" + nextCatBtn(cat) + "</div></div>";
 }
 function nextCatBtn(cat) { const i = LOVE_CATS.findIndex((c) => c.id === cat); const n = LOVE_CATS[i + 1]; return n ? '<button class="btn" data-act="loveCat" data-id="' + n.id + '">다음 분류 · ' + n.name + I.arrow + "</button>" : ""; }
 
-/* ---------------- CH06 thoughts (drill-down) ---------------- */
-function stepThoughts() {
-  const P = S.P, g = S.ui.thGroup, itId = S.ui.thItem, items = P.thoughts.items;
-  if (itId) {
-    const it = items.find((x) => x.id === itId); if (!it) { S.ui.thItem = null; return stepThoughts(); }
-    const G = THOUGHT_GROUPS.find((x) => x.id === it.group); const sibs = items.filter((x) => x.group === it.group); const k = sibs.indexOf(it);
-    const idx = items.indexOf(it);
-    return '<div class="crumbs"><button data-act="thGroup" data-id="">마음속 주제</button><span class="sep">›</span><button data-act="thGroup" data-id="' + it.group + '">' + esc(G ? G.name : "") + '</button><span class="sep">›</span><b style="color:var(--ink)">' + esc(it.label) + "</b></div>" +
-      '<div class="stack">' +
-      (it.memo || (it.links || []).length ? '<div class="memo"><span class="yr">예전 메모' + (it.src ? " · " + esc(it.src) : "") + "</span>" + (it.memo ? esc(it.memo) : '<span class="muted" style="font-family:var(--f-sans);font-size:13px">연관어만 적혀 있어요</span>') + ((it.links || []).length ? '<div class="row" style="gap:5px;margin-top:10px">' + it.links.map((l) => '<span class="tag">' + esc(l) + "</span>").join("") + "</div>" : "") + "</div>" : "") +
-      '<div class="field"><span class="flabel">지금 이 주제는</span><div class="seg3" role="group">' + TH_STATUS.map(([v, l]) => '<button class="' + (it.status === v ? "on" : "") + '" data-act="thStatus" data-v="' + v + '">' + l + "</button>").join("") + "</div></div>" +
-      '<div class="field"><span class="flabel">마음을 차지하는 비중</span><div class="mini-seg">' + [[1, "가볍게"], [2, "자주"], [3, "크게"]].map(([v, l]) => '<button class="' + (it.weight === v ? "on" : "") + '" data-act="thWeight" data-v="' + v + '">' + l + "</button>").join("") + "</div></div>" +
-      '<div class="field"><label for="thNow">지금의 생각</label><textarea class="input" id="thNow" rows="4" data-bind="P.thoughts.items.' + idx + '.now" placeholder="예전과 무엇이 같고 무엇이 달라졌나요?">' + esc(it.now || "") + "</textarea></div>" +
-      '<div class="row" style="justify-content:space-between">' + (k > 0 ? '<button class="btn ghost" data-act="thItem" data-id="' + sibs[k - 1].id + '">' + I.back + esc(sibs[k - 1].label) + "</button>" : "<span></span>") + (k < sibs.length - 1 ? '<button class="btn" data-act="thItem" data-id="' + sibs[k + 1].id + '">' + esc(sibs[k + 1].label) + I.arrow + "</button>" : '<button class="btn" data-act="thGroup" data-id="">다른 그룹 보기' + I.arrow + "</button>") + "</div></div>";
-  }
-  if (!g) {
-    return '<p class="muted" style="margin-bottom:14px">예전에 적어 둔 생각의 뿌리들이에요. 그룹에 들어가 하나씩 지금의 눈으로 다시 봐 주세요.</p><div class="tiles">' + THOUGHT_GROUPS.map((G, i) => {
-      const xs = items.filter((x) => x.group === G.id); const rv = xs.filter((x) => x.status).length; const hv = xs.filter((x) => x.status === "heavy").length;
-      return '<button class="tile" data-act="thGroup" data-id="' + G.id + '"><span class="bar" style="background:var(--c-thoughts);opacity:' + (xs.length ? 1 : 0.25) + '"></span><span class="ic">' + pad2(i + 1) + '</span><span class="nm">' + G.name + '</span><span class="ds">' + (xs.slice(0, 5).map((x) => esc(x.label)).join(" · ") || G.d) + '</span><span class="ct ' + (rv ? "has" : "") + '">주제 ' + xs.length + " · 검토 " + rv + (hv ? " · 무거움 " + hv : "") + "</span></button>";
-    }).join("") + "</div>";
-  }
-  const G = THOUGHT_GROUPS.find((x) => x.id === g); const xs = items.filter((x) => x.group === g);
-  return '<div class="crumbs"><button data-act="thGroup" data-id="">마음속 주제</button><span class="sep">›</span><b style="color:var(--ink)">' + G.name + "</b></div>" +
-    '<div class="items">' + (xs.length ? xs.map((x) => '<button class="it" style="text-align:left;cursor:pointer" data-act="thItem" data-id="' + x.id + '"><span class="n">' + esc(x.label) + '</span><span>' + (x.status ? '<span class="tag' + (x.status === "heavy" ? " est" : "") + '">' + (TH_STATUS.find((s) => s[0] === x.status) || [0, ""])[1] + "</span>" : '<span class="tag">미검토</span>') + '</span><span class="w">' + esc(x.now ? "지금: " + cut(x.now, 80) : x.memo ? cut(x.memo, 80) : (x.links || []).join(" · ")) + "</span></button>").join("") : '<div class="empty">아직 주제가 없어요.</div>') + "</div>" +
-    '<div class="adder" style="grid-template-columns:minmax(0,1fr) auto;margin-top:12px"><input class="input" id="newTh" placeholder="이 그룹에 새 주제 추가 (예: 몰입)"><button class="btn primary" data-act="thAdd">' + I.plus + "추가</button></div>";
-}
+/* ---------------- CH06 thoughts: the think-tree editor ---------------- */
+function stepThoughts() { return treeEditor(true); }
 
 /* ---------------- CH07 wants (drill-down) ---------------- */
 function stepWants() {
   const P = S.P, t = S.ui.wantType, items = P.wants.items;
   if (!t) {
-    return '<p class="muted" style="margin-bottom:14px">다섯 종류의 목적지예요. 들어가서 시기·중요도·상태를 확인해 주세요. 확인한 항목이 공정표의 미래 구간이 됩니다.</p><div class="tiles">' + WANT_TYPES.map((T) => {
+    return '<p class="muted" style="margin-bottom:14px">다섯 종류의 목적지예요. 들어가서 시기·중요도·상태를 확인해 주세요. 확인한 항목이 연표의 미래 구간이 됩니다.</p><div class="tiles">' + WANT_TYPES.map((T) => {
       const xs = items.filter((w) => w.type === T.id); const rv = xs.filter((w) => w.rv).length;
       return '<button class="tile" data-act="wantType" data-id="' + T.id + '"><span class="bar" style="background:var(--c-wants);opacity:' + (xs.length ? 1 : 0.25) + '"></span><span class="ic" style="font-size:9px">' + T.en + '</span><span class="nm">' + T.name + '</span><span class="ds">' + (xs.sort((a, b) => (b.prio || 0) - (a.prio || 0)).slice(0, 3).map((w) => esc(cut(w.text, 18))).join(" · ") || T.d) + '</span><span class="ct ' + (rv ? "has" : "") + '">' + xs.length + "개 · 확인 " + rv + "</span></button>";
     }).join("") + "</div>";
@@ -214,7 +190,7 @@ function insightBox(id) {
   const ins = S.AI.insights[id], busy = S.ui.busy["ins_" + id];
   let inner;
   if (busy) inner = '<div class="typing"><span class="spinner"></span>Claude가 이 챕터를 읽고 있어요. 30초~1분 정도 걸려요.</div>';
-  else if (ins) inner = '<div class="body">' + esc(ins.insight) + "</div>" + (ins.question ? '<div class="q">' + esc(ins.question) + "</div>" : "") + '<div class="row" style="justify-content:space-between"><span class="mono muted" style="font-size:10.5px">' + fmtDot(ins.at) + " · REV." + pad2(ins.rev || 0) + "</span>" + (aiAvailable() ? '<button class="btn sm ghost" data-act="insight" data-id="' + id + '">다시 해석</button>' : "") + "</div>";
+  else if (ins) inner = '<div class="body">' + esc(ins.insight) + "</div>" + (ins.question ? '<div class="q">' + esc(ins.question) + "</div>" : "") + '<div class="row" style="justify-content:space-between"><span class="mono muted" style="font-size:10.5px">' + fmtDot(ins.at) + " · " + ((ins.rev || 0) + 1) + "판" + "</span>" + (aiAvailable() ? '<button class="btn sm ghost" data-act="insight" data-id="' + id + '">다시 해석</button>' : "") + "</div>";
   else if (aiAvailable()) inner = '<p style="font-size:13.5px;color:var(--ink-2)">이 결과를 다른 챕터와 메모에 비추어 해석하고, 스스로 던져 볼 질문을 하나 만들어 드려요.</p><div><button class="btn accent" data-act="insight" data-id="' + id + '">' + I.spark + "Claude의 해석 받기</button></div>";
   else inner = '<p class="muted" style="font-size:13px">' + (S.aiOff ? esc(aiErrMsg({ code: S.aiOff })) : "이 화면에서는 Claude 연결을 쓸 수 없어요. Claude 앱에서 열면 해석을 받을 수 있어요.") + "</p>";
   return '<div class="insight"><div class="h">' + I.spark.replace("<svg", '<svg width="15" height="15"') + "Claude의 해석</div>" + inner + "</div>";
@@ -225,7 +201,7 @@ function chapterResult(id) {
     case "basics": {
       const b = P.basics, age = b.birthYear ? new Date().getFullYear() - b.birthYear : null;
       const rows = [["이름", b.name, "NAME"], ["호칭", b.nick, "CALL SIGN"], ["출생년도", b.birthYear ? b.birthYear + (age ? " (만 " + (age - 1) + "~" + age + "세)" : "") + (b.birthEst ? " · 추정" : "") : "", "BUILT"], ["사는 곳", b.region, "PORT"], ["하는 일", b.job, "CLASS"], ["가족", b.family, "CREW"], ["일의 이력", b.career, "SERVICE"], ["한 문장 소개", b.intro, "REMARKS"]];
-      h = '<div class="res-grid"><div><div class="eyebrow" style="margin-bottom:10px">Principal particulars · 제원표</div><table style="width:100%;border-collapse:collapse;font-size:13.5px">' + rows.map(([k, v, e]) => '<tr><td style="padding:9px 10px 9px 0;border-bottom:1px solid var(--rule-2);width:120px;vertical-align:top"><div style="font-weight:600">' + k + '</div><div class="mono muted" style="font-size:9.5px;letter-spacing:.1em">' + e + '</div></td><td style="padding:9px 0;border-bottom:1px solid var(--rule-2)">' + (v ? esc(v) : '<span class="muted">—</span>') + "</td></tr>").join("") + "</table></div>" +
+      h = '<div class="res-grid"><div><div class="eyebrow" style="margin-bottom:10px">Basics · 기본 정보</div><table style="width:100%;border-collapse:collapse;font-size:13.5px">' + rows.map(([k, v, e]) => '<tr><td style="padding:9px 10px 9px 0;border-bottom:1px solid var(--rule-2);width:120px;vertical-align:top"><div style="font-weight:600">' + k + '</div><div class="mono muted" style="font-size:9.5px;letter-spacing:.1em">' + e + '</div></td><td style="padding:9px 0;border-bottom:1px solid var(--rule-2)">' + (v ? esc(v) : '<span class="muted">—</span>') + "</td></tr>").join("") + "</table></div>" +
         '<div class="stack"><div class="qhint"><b>다음</b><span>이제 ' + (P.basics.confirmed ? "" : "위 내용을 확인하고 ") + '지금의 상태를 점검합니다. CH.01은 삶의 여덟 영역을 두 번씩 매기는 5분짜리 점검이에요.</span></div>' + (b.confirmed ? "" : '<button class="btn primary" data-act="basicsConfirm">이 내용이 맞아요</button>') + "</div></div>";
       break;
     }
@@ -267,7 +243,7 @@ function chapterResult(id) {
       break;
     }
     case "thoughts": {
-      const it = P.thoughts.items; const col = (k, name, color) => { const xs = it.filter((x) => x.status === k).sort((a, b) => (b.weight || 0) - (a.weight || 0)); return '<div><div class="col-h"><i class="dot" style="background:' + color + '"></i>' + name + " " + xs.length + '</div><div class="pt-tags">' + (xs.map((x) => "<span>" + esc(x.label) + (x.weight ? " " + "●".repeat(x.weight) : "") + "</span>").join("") || '<span class="muted" style="border:0;background:none">없음</span>') + "</div></div>"; };
+      const it = P.tree.nodes.filter((x) => x.parent && x.kind !== "word"); const col = (k, name, color) => { const xs = it.filter((x) => x.status === k).sort((a, b) => (b.weight || 0) - (a.weight || 0)); return '<div><div class="col-h"><i class="dot" style="background:' + color + '"></i>' + name + " " + xs.length + '</div><div class="pt-tags">' + (xs.map((x) => "<span>" + esc(x.label) + (x.weight ? " " + "●".repeat(x.weight) : "") + "</span>").join("") || '<span class="muted" style="border:0;background:none">없음</span>') + "</div></div>"; };
       const un = it.filter((x) => !x.status).length;
       h = '<div class="res-grid"><div class="stack">' + col("heavy", "여전히 무겁다", "var(--signal)") + col("changed", "생각이 바뀌었다", "var(--c-values)") + col("dropped", "내려놓았다", "var(--ink-4)") + (un ? '<p class="muted" style="font-size:12.5px">아직 검토하지 않은 주제 ' + un + "개</p>" : "") + '</div><div class="stack">' + insightBox("thoughts") + "</div></div>";
       break;
@@ -282,7 +258,7 @@ function chapterResult(id) {
       break;
     }
     case "timeline": {
-      h = '<div class="stack">' + ganttSVG(P, { compact: true }) + '<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">전체 공정표는 도면 LD-03에서 확대·편집할 수 있어요.</span><button class="btn" data-act="go" data-view="gantt">인생 공정표 열기' + I.arrow + "</button></div>" + insightBox("timeline") + "</div>";
+      h = '<div class="stack">' + ganttSVG(P, { compact: true }) + '<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">전체 연표는 지도 III에서 확대하고 편집할 수 있어요.</span><button class="btn" data-act="go" data-view="gantt">인생 연표 열기' + I.arrow + "</button></div>" + insightBox("timeline") + "</div>";
       break;
     }
   }

@@ -1,4 +1,4 @@
-/* ============================================================ LD-02 LIVING MAP */
+/* ============================================================ II RELATION MAP */
 function shortAct(t) { return t.replace(/\s*\(.*?\)\s*/g, "").trim(); }
 function buildGraph(P) {
   const nodes = [], links = [];
@@ -20,8 +20,8 @@ function buildGraph(P) {
   // loves
   allLoveItems(P).sort((a, b) => (b.why ? 1 : 0) - (a.why ? 1 : 0)).slice(0, 16).forEach((it) => leaf("loves", "l_" + it.id, it.name, it.why || LOVE_CATS.find((c) => c.id === it.cat).name, it.why ? 2 : 1));
   // thoughts
-  P.thoughts.items.filter((x) => x.status !== "dropped").sort((a, b) => (b.weight || (b.status === "heavy" ? 2 : 0) || (b.memo ? 1 : 0)) - (a.weight || (a.status === "heavy" ? 2 : 0) || (a.memo ? 1 : 0))).slice(0, 12)
-    .forEach((x) => leaf("thoughts", "th_" + x.id, x.label, x.now || x.memo || (x.links || []).join(", "), x.weight || (x.status === "heavy" ? 3 : 1)));
+  P.tree.nodes.filter((x) => x.parent && x.kind !== "word" && x.status !== "dropped").sort((a, b) => (b.weight || (b.status === "heavy" ? 2 : 0) || (b.memo ? 1 : 0)) - (a.weight || (a.status === "heavy" ? 2 : 0) || (a.memo ? 1 : 0))).slice(0, 12)
+    .forEach((x) => leaf("thoughts", "th_" + x.id, x.label, x.now || x.memo || treeChildren(P, x.id).map((k) => k.label).join(", "), x.weight || (x.status === "heavy" ? 3 : 1)));
   // wants
   P.wants.items.filter((w) => w.status !== "done").sort((a, b) => (b.prio || 0) - (a.prio || 0)).slice(0, 12).forEach((w) => leaf("wants", "w_" + w.id, cut(w.text, 16), WT_BY[w.type].name + " · " + (HZ_BY[w.horizon]?.[1] || "") + (w.why ? " · " + w.why : ""), w.prio || 1));
   // life: wheel focus + family
@@ -67,13 +67,13 @@ function viewMap() {
   if (busy) bar += '<span class="typing"><span class="spinner"></span>Claude가 숨은 연결을 찾는 중이에요. 1분 정도 걸려요.</span>';
   else if (aiAvailable()) bar += '<button class="btn ' + (ai ? "" : "accent") + '" data-act="drawMap">' + I.spark + (ai ? "다시 해석" : "지도 해석하기") + "</button>";
   bar += "</span></div>";
-  const themes = ai && ai.themes.length ? '<div class="row" style="justify-content:space-between;margin:20px 0 10px"><h3 style="font-size:15px">Claude가 찾은 주제</h3><span class="mono muted" style="font-size:11px">' + fmtDot(ai.at) + " · REV." + pad2(ai.rev || 0) + '</span></div><div class="themes">' + ai.themes.map((t, i) => '<button class="theme" style="text-align:left" data-act="mapSel" data-id="theme_' + i + '"><b>' + esc(t.name) + "</b><p>" + esc(t.desc) + '</p><span class="mono muted" style="font-size:10.5px">' + t.members.length + "개 노드</span></button>").join("") + "</div>" :
+  const themes = ai && ai.themes.length ? '<div class="row" style="justify-content:space-between;margin:20px 0 10px"><h3 style="font-size:15px">Claude가 찾은 주제</h3><span class="mono muted" style="font-size:11px">' + fmtDot(ai.at) + " · " + (ai.rev || 0) + "판" + '</span></div><div class="themes">' + ai.themes.map((t, i) => '<button class="theme" style="text-align:left" data-act="mapSel" data-id="theme_' + i + '"><b>' + esc(t.name) + "</b><p>" + esc(t.desc) + '</p><span class="mono muted" style="font-size:10.5px">' + t.members.length + "개 노드</span></button>").join("") + "</div>" :
     '<p class="muted" style="margin-top:14px;font-size:13px">' + (aiAvailable() ? '"지도 해석하기"를 누르면 서로 다른 영역 사이의 숨은 연결과 3~5개의 주제를 찾아 지도 위에 겹쳐 그려요.' : "지금은 영역별 연결만 보여요. Claude 연결이 있는 화면에서 숨은 연결을 찾을 수 있어요.") + "</p>";
   const tbl = '<details class="tbl"><summary>표로 보기 (노드 ' + g.nodes.length + " · 연결 " + g.links.length + ')</summary><table><thead><tr><th>영역</th><th>노드</th><th>설명</th></tr></thead><tbody>' + g.nodes.filter((n) => n.kind === "leaf").map((n) => "<tr><td>" + esc(DOM_BY[n.dom].name) + "</td><td>" + esc(n.label) + "</td><td>" + esc(cut(n.detail, 80)) + "</td></tr>").join("") + "</tbody></table>" +
     (ai && ai.links.length ? '<table style="margin-top:10px"><thead><tr><th>연결</th><th>이유</th></tr></thead><tbody>' + ai.links.map((l) => { const a = g.nodes.find((n) => n.id === l.a), c = g.nodes.find((n) => n.id === l.b); return a && c ? "<tr><td>" + esc(a.label) + " ↔ " + esc(c.label) + "</td><td>" + esc(l.why) + "</td></tr>" : ""; }).join("") + "</tbody></table>" : "") + "</details>";
   return drawingHead("map", "성격·가치·에너지·취향·마음속 주제·원하는 것을 하나의 지도에. 노드를 끌거나 눌러 보세요. 가운데의 나에서 가까울수록 자주 연결된 것들이에요.") + bar +
     '<div class="map-wrap" id="mapWrap"><svg id="mapSvg" aria-label="관계 지도 (노드 ' + leafN + '개)"></svg><div class="map-side" id="mapSide" hidden></div><div id="mapMsg" class="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">지도 엔진을 불러오는 중…</div></div>' + themes + tbl +
-    '<div class="dwg-foot">' + titleBlock([["DWG NO.", "LD-02"], ["TITLE", "살아있는 지도"], ["REV", ai ? "REV." + pad2(ai.rev || 0) : "—"], ["NODES", String(leafN)], ["LINKS", String(ai ? ai.links.length : 0) + " AI"], ["SCALE", "FREE"]]) + "</div>";
+    '<div class="dwg-foot">' + titleBlock([["도판", "II"], ["제목", "관계 지도"], ["판", ai ? (ai.rev || 0) + "판" : "—"], ["노드", String(leafN)], ["숨은 연결", String(ai ? ai.links.length : 0)], ["축척", "FREE"]]) + "</div>";
 }
 
 let mapSim = null;

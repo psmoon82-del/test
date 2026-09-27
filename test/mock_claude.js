@@ -8,7 +8,8 @@
   const deepFreeze = (o) => { if (o && typeof o === "object") { Object.values(o).forEach(deepFreeze); Object.freeze(o); } return o; };
   const snap = (path) => { const d = store.get(path); return { id: path.split("/").pop(), exists: d !== undefined, data: () => (d === undefined ? undefined : deepFreeze(JSON.parse(JSON.stringify(d)))), metadata: { fromCache: false, hasPendingWrites: false } }; };
   const doc = (path) => ({ id: path.split("/").pop(), path, get: async () => snap(path), set: async (d) => { await new Promise((r) => setTimeout(r, 20)); store.set(path, JSON.parse(JSON.stringify(d))); window.__writes = (window.__writes || 0) + 1; }, update: async (d) => { store.set(path, Object.assign(store.get(path) || {}, d)); }, delete: async () => store.delete(path), onSnapshot: (n) => { n(snap(path)); return () => {}; } });
-  const db = { doc, collection: (p) => ({ path: p, doc: (id) => doc(p + "/" + id) }) };
+  const coll = (p) => ({ path: p, doc: (id) => doc(p + "/" + id), get: async () => { const depth = p.split("/").length + 1; const docs = Array.from(store.keys()).filter((k) => k.startsWith(p + "/") && k.split("/").length === depth).sort().map(snap); return { docs, size: docs.length, empty: !docs.length }; } });
+  const db = { doc, collection: coll };
   const user = { id: async () => "u_testuser000000000000000", isOwner: async () => !window.__NOT_OWNER__, canEdit: async () => true, can: async () => true, me: async () => ({ id: "u_test", name: "", isOwner: true }) };
   const delay = (ms) => new Promise((r) => setTimeout(r, ms));
   const textOf = (input) => (typeof input === "string" ? input : input.map((t) => t.content).join("\n"));
@@ -36,6 +37,8 @@
   }
   async function sample(input, opts) { const r = await json(input, opts); return { text: JSON.stringify(r), truncated: false, modelTierApplied: "default" }; }
   sample.json = json; sample.limits = async () => ({ maxPromptBytes: 65536 });
-  const caps = { db, user, sample };
+  const downloads = { save: async ({ filename, data }) => { const size = typeof data === "string" ? data.length : data.size || data.byteLength || 0; (window.__SAVED__ = window.__SAVED__ || []).push({ filename, size, data: typeof data === "string" ? data : null }); return { status: "saved" }; } };
+  const permissions = { state: async () => ({ db: "granted", sample: "granted" }) };
+  const caps = { db, user, sample, downloads, permissions };
   window.claude = { use: (n) => new Promise((r) => setTimeout(() => r(window.__NO_CLAUDE_CAPS__ ? null : caps[n] || null), 60)) };
 })();

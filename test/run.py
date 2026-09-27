@@ -11,6 +11,7 @@ SEED_PATH = ROOT + "/seed/seed_owner.json"  # gitignored (personal data); tests 
 seed = open(SEED_PATH, encoding="utf-8").read() if os.path.exists(SEED_PATH) else "null"
 mock = open(ROOT + "/test/mock_claude.js", encoding="utf-8").read()
 D3 = open(ROOT + "/test/vendor/d3.min.js", encoding="utf-8").read()
+XLSX = open(ROOT + "/test/vendor/xlsx.full.min.js", encoding="utf-8").read()
 
 def mkpage(browser, w=1360, h=900, dark=False, extra=""):
     ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme="dark" if dark else "light", device_scale_factor=1)
@@ -19,6 +20,7 @@ def mkpage(browser, w=1360, h=900, dark=False, extra=""):
     ctx.route("**/fonts.googleapis.com/**", lambda r: r.abort())
     ctx.route("**/fonts.gstatic.com/**", lambda r: r.abort())
     ctx.route("**/d3.min.js", lambda r: r.fulfill(status=200, content_type="application/javascript", body=D3))
+    ctx.route("**/xlsx.full.min.js", lambda r: r.fulfill(status=200, content_type="application/javascript", body=XLSX))
     p = ctx.new_page()
     errs = []
     p.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))
