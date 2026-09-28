@@ -1,0 +1,1000 @@
+(function(){
+"use strict";
+/* ============================================================ utilities */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nl2br = (s) => esc(s).replace(/\n/g, "<br>");
+const uid = (p) => (p || "x") + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sum = (a) => a.reduce((x, y) => x + y, 0);
+const avg = (a) => (a.length ? sum(a) / a.length : 0);
+const pad2 = (n) => String(n).padStart(2, "0");
+const nowISO = () => new Date().toISOString();
+const localDate = (d) => { d = d || new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); };
+const curYM = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1); };
+const nowYear = () => { const d = new Date(); return d.getFullYear() + d.getMonth() / 12; };
+const fmtDot = (iso) => { if (!iso) return "-"; const d = new Date(iso); if (isNaN(d)) return String(iso); return d.getFullYear() + "." + pad2(d.getMonth() + 1) + "." + pad2(d.getDate()); };
+const fmtYM = (s) => { if (!s) return "연도 미정"; const [y, m, d] = String(s).split("-"); return y + (m ? "." + m : "") + (d ? "." + d : ""); };
+/* "2017-05" -> 2017.33 ; "2017" -> 2017 ; null -> null */
+const ym2num = (s) => { if (s == null || s === "") return null; const p = String(s).split("-"); const y = +p[0]; if (!y) return null; const m = p[1] ? +p[1] - 1 : 0; return y + m / 12; };
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pick = (arr, n) => arr.slice(0, n);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const words = (n) => n;
+
+let toastTimer = null;
+function toast(msg, ms) {
+  let el = $("#toast");
+  if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "toast"; el.setAttribute("role", "status"); document.body.appendChild(el); }
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, ms || 2600);
+}
+
+/* inline icons (stroke = currentColor) */
+const I = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 11 12 4l9 7"/><path d="M5 10v9h14v-9"/><path d="M10 19v-5h4v5"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5" stroke-linecap="round"/></svg>',
+  log: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h10l3 3v15H6z"/><path d="M9 9h7M9 13h7M9 17h4"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6" stroke-linecap="round"/></svg>',
+  spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 12 20 4l-6 16-3-7z"/></svg>',
+  ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6M9 11h4" stroke-linecap="round"/></svg>',
+  tree: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M7 12h9M12 12V6.5A1.5 1.5 0 0 1 13.5 5H16M12 12v5.5a1.5 1.5 0 0 0 1.5 1.5H16"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 10l5-5 5 5M5 20h14"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5V19c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V4.5c-3-.5-6 0-8 1.5z"/><path d="M12 6v14.5"/></svg>',
+  logo: '<svg viewBox="0 0 32 32" fill="none"><rect x="5" y="4" width="22" height="24" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M10 10h12M10 14h12M10 18h8" stroke="currentColor" stroke-width="1" opacity=".55"/><path d="M19 20l5-5 2 2-5 5h-2z" fill="var(--accent)"/></svg>',
+};
+
+/* ============================================================ data: areas, issue flow, interview slots, piece sections */
+/* the whole-life map. Each area collects issue questions; the book's parts follow it. */
+const AREAS = [
+  { id: "work", name: "일" },
+  { id: "money", name: "돈" },
+  { id: "family", name: "가족" },
+  { id: "parent", name: "부모·자녀" },
+  { id: "people", name: "관계" },
+  { id: "health", name: "건강" },
+  { id: "decide", name: "결정" },
+  { id: "learn", name: "배움" },
+  { id: "time", name: "시간" },
+  { id: "fail", name: "실패" },
+  { id: "meaning", name: "행복·의미" },
+];
+const AREA_BY = Object.fromEntries(AREAS.map((a) => [a.id, a]));
+
+/* an issue moves left to right. "ready" = the interview has enough to draft. */
+const STATUS = [
+  { id: "idea", name: "후보" },
+  { id: "talk", name: "인터뷰 중" },
+  { id: "ready", name: "초안 가능" },
+  { id: "draft", name: "초안" },
+  { id: "done", name: "완성" },
+];
+const STATUS_BY = Object.fromEntries(STATUS.map((s) => [s.id, s]));
+
+/* what one issue interview has to pull out, in order. The principle is asked last. */
+const SLOTS = [
+  { id: "opinion", name: "의견", q: "이 문제를 어떻게 보는가" },
+  { id: "reason", name: "이유", q: "무엇을 따졌고 무엇을 버렸나" },
+  { id: "counter", name: "반론", q: "반대 의견에 어떻게 답하나" },
+  { id: "cond", name: "조건", q: "이 생각이 통하지 않는 때" },
+  { id: "principle", name: "원칙", q: "한 문장으로, 자기 말로" },
+];
+/* checked by Claude on every answer. All three pass → no need to dig into the life record. */
+const CHECKS = [
+  { id: "concrete", name: "구체적", d: "기준, 비교, 숫자가 있다" },
+  { id: "fresh", name: "흔하지 않음", d: "누구나 할 말이 아니다" },
+  { id: "robust", name: "반론을 견딤", d: "제기된 반론에 답이 된다" },
+];
+const IV_CAP = 12;        /* answers before Claude suggests moving to a draft */
+const SHORT_ANSWER = 12;  /* characters; shorter answers switch the next question to choices or contrast */
+
+/* one piece of the book */
+const SECTIONS = [
+  { id: "opinion", name: "의견" },
+  { id: "process", name: "생각의 과정" },
+  { id: "scene", name: "장면", opt: true },
+  { id: "limits", name: "한계와 조건" },
+  { id: "link", name: "연결" },
+  { id: "reader", name: "독자에게" },
+];
+
+/* starter questions for someone opening the app with nothing yet. Claude suggests personal ones later. */
+const STARTER = [
+  ["work", "좋아하는 일을 찾아야 하나, 집중할 수 있는 일이면 되나?"],
+  ["work", "말이 통하지 않는 상사와는 어떻게 일해야 하나?"],
+  ["money", "빚을 내서 투자해도 되나?"],
+  ["money", "얼마면 충분한가?"],
+  ["family", "배우자와 서로의 관심사가 멀어질 때 어떻게 하나?"],
+  ["parent", "아이 공부에 부모는 얼마나 개입해야 하나?"],
+  ["people", "넓은 관계와 깊은 관계 중 무엇이 중요한가?"],
+  ["health", "건강 경고를 들었을 때 무엇부터 바꾸나?"],
+  ["decide", "확신이 없을 때 움직여야 하나, 기다려야 하나?"],
+  ["decide", "남들이 안 된다고 할 때 무엇을 보고 판단하나?"],
+  ["learn", "어른이 되어 새로 배울 때 무엇이 다른가?"],
+  ["time", "여유는 시간이 많을 때 생기나?"],
+  ["fail", "배수의 진은 언제 통하고 언제 안 통하나?"],
+  ["meaning", "평범한 삶에서 의미는 어디서 오나?"],
+];
+
+/* ============================================================ backend adapter
+   Everything the app needs from its host goes through Backend: who is viewing,
+   loading/saving the viewer's documents, asking Claude, and saving files.
+   Today the host is the claude.ai artifact runtime; a standalone app would swap
+   this file (e.g. IndexedDB + an API proxy) and keep the rest unchanged. */
+const Backend = {
+  kind: "none", uid: null, isOwner: false,
+  caps: { db: false, user: false, sample: false, downloads: false },
+  _db: null, _sample: null, _downloads: null,
+
+  async init() {
+    const c = window.claude;
+    if (!c || typeof c.use !== "function") { this.kind = "local"; this.uid = "local"; return; }
+    const use = (n) => withTimeout(c.use(n).catch(() => null), 12000, null);
+    const [db, user, sample, downloads] = await Promise.all([use("db"), use("user"), use("sample"), use("downloads")]);
+    this._db = db; this._sample = sample; this._downloads = downloads;
+    this.caps = { db: !!db, user: !!user, sample: !!sample, downloads: !!downloads };
+    if (user) {
+      try { this.uid = await user.id(); } catch (e) { this.uid = null; }
+      try { this.isOwner = await user.isOwner(); } catch (e) { this.isOwner = false; }
+    }
+    this.kind = db && this.uid ? "cloud" : db ? "noid" : "local";
+    if (this.kind === "local") this.uid = "local";
+  },
+  base() { return "data/users/" + this.uid; },
+
+  /* every document in the viewer's own space, as plain (unfrozen) objects */
+  async loadAll() {
+    if (this.kind === "local") return localLoad();
+    const out = {};
+    try {
+      const snap = await this._db.collection(this.base()).get();
+      snap.docs.forEach((d) => { if (d.exists) out[d.id] = clone(d.data()); });
+      return out;
+    } catch (e) {
+      /* fall back to the documents we know by name; piece names come from the issue list */
+      const get = async (names) => { const snaps = await Promise.all(names.map((n) => this._db.doc(this.base() + "/" + n).get().catch(() => null))); snaps.forEach((d, i) => { if (d && d.exists) out[names[i]] = clone(d.data()); }); };
+      await get(["b_book", "b_issues", "b_scenes", "b_atlas"]);
+      await get(((out.b_issues && out.b_issues.items) || []).map((x) => "b_p_" + x.id));
+      return out;
+    }
+  },
+  async readShared(path) {
+    if (this.kind !== "cloud") return null;
+    const d = await this._db.doc(path).get();
+    return d.exists ? clone(d.data()) : null;
+  },
+  async save(name, data) {
+    if (this.kind === "local") return localSave(name, data);
+    if (this.kind !== "cloud") throw { code: "no_store" };
+    await this._db.doc(this.base() + "/" + name).set(data);
+  },
+
+  async remove(name) {
+    if (this.kind === "local") { try { localStorage.removeItem(LS_KEY + name); } catch (e) { /* storage blocked */ } return; }
+    const ref = this._db.doc(this.base() + "/" + name);
+    if (typeof ref.delete === "function") return ref.delete();
+    return ref.set({ gone: true });
+  },
+
+  aiAvailable() { return !!this._sample; },
+  async aiJSON(input, opts) { return this._sample.json(input, opts); },
+
+  async download(filename, data) {
+    if (!this._downloads) throw { code: "unavailable" };
+    return this._downloads.save({ filename, data });
+  },
+};
+
+/* local fallback (preview outside claude.ai): this browser only */
+const LS_KEY = "book.v1.";
+function localLoad() {
+  const out = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(LS_KEY)) out[k.slice(LS_KEY.length)] = JSON.parse(localStorage.getItem(k)); } } catch (e) { /* storage blocked */ }
+  return out;
+}
+function localSave(name, data) {
+  try { localStorage.setItem(LS_KEY + name, JSON.stringify(data)); } catch (e) { throw { code: "local_storage", message: String(e && e.message) }; }
+}
+
+/* ============================================================ state, persistence, diagnostics */
+const S = {
+  mode: "boot", uid: null, isOwner: false,
+  B: null,                 /* b_book: settings and meta */
+  ISS: { items: [] },      /* b_issues: the issue map */
+  SC: { items: [] },       /* b_scenes: my record (scenes I told) */
+  AT: null,                /* b_atlas: material imported from an Atlas JSON export */
+  PC: {},                  /* b_p_<issue id>: interview and draft of one piece */
+  ui: { view: "home", issue: null, area: "all", scEdit: null, busy: {}, err: {} },
+  saveState: "idle",
+  diag: { caps: null, perms: null, save: null, ai: null, writes: 0, lastWrite: null },
+};
+
+function blankBook() {
+  return { v: 1, createdAt: nowISO(), updatedAt: nowISO(), meta: { rejected: [], suggestedAt: null } };
+}
+function blankPiece() {
+  return {
+    iv: { turns: [], slots: {}, check: {}, quotes: [], scenes: [], n: 0, pend: false },
+    draft: null,
+  };
+}
+function ensurePiece(id) {
+  if (!S.PC[id]) S.PC[id] = blankPiece();
+  const p = S.PC[id], b = blankPiece();
+  for (const k in b.iv) if (p.iv[k] == null) p.iv[k] = b.iv[k];
+  return p;
+}
+const issueById = (id) => S.ISS.items.find((x) => x.id === id);
+function addIssue(area, q, extra) {
+  const it = Object.assign({ id: uid("i"), area: AREA_BY[area] ? area : "meaning", q: String(q).trim(), status: "idea", at: nowISO() }, extra || {});
+  S.ISS.items.push(it);
+  return it;
+}
+
+/* ---------------- persistence ----------------
+   Each piece has its own document so no single one nears the store's 256 KiB cap.
+   flush() writes only documents whose JSON changed since the last successful save. */
+const DOC_LIMIT = 240 * 1024;
+const lastSaved = {};
+const knownDocs = new Set();
+let writing = Promise.resolve();
+
+function stateDocs() {
+  const d = { b_book: S.B, b_issues: S.ISS, b_scenes: S.SC };
+  if (S.AT) d.b_atlas = S.AT;
+  for (const id in S.PC) d["b_p_" + id] = S.PC[id];
+  return d;
+}
+function markDirty() { if (S.B) S.B.updatedAt = nowISO(); flushSoon(); }
+const flushSoon = debounce(flush, 900);
+function setSave(st) { S.saveState = st; $$(".save-state").forEach((el) => { el.className = "save-state " + st; const t = el.querySelector("span"); if (t) t.textContent = { idle: "저장됨", saving: "저장 중", off: "저장 안 됨", local: "이 브라우저에 저장", err: "저장 실패" }[st] || st; }); }
+function flush() {
+  if (!S.B || (S.mode !== "cloud" && S.mode !== "local")) return;
+  writing = writing.then(async () => {
+    const docs = stateDocs();
+    const changed = Object.keys(docs).map((n) => [n, JSON.stringify(docs[n])]).filter(([n, j]) => j !== lastSaved[n]);
+    if (!changed.length) return;
+    setSave("saving"); renderDiag();
+    for (const [n, j] of changed) {
+      if (j.length > DOC_LIMIT) { noteErr("save", { code: "too_large", message: n + " " + Math.round(j.length / 1024) + "KB" }); setSave("err"); toast("'" + n + "' 문서가 너무 커져 저장하지 못했어요."); return; }
+      const put = () => Backend.save(n, JSON.parse(j));
+      let err = null;
+      try { await put(); } catch (e) { err = e || { code: "unknown" }; }
+      if (err && err.code === "unavailable") { await new Promise((r) => setTimeout(r, 800 + Math.random() * 600)); try { await put(); err = null; } catch (e2) { err = e2 || { code: "unknown" }; } }
+      if (err) { noteErr("save", err); setSave("err"); toast("저장하지 못했어요 (" + (err.code || "오류") + "). 잠시 후 다시 시도해 주세요."); return; }
+      lastSaved[n] = j; knownDocs.add(n); S.diag.writes++; S.diag.lastWrite = new Date().toLocaleTimeString();
+    }
+    S.diag.save = null; setSave(S.mode === "local" ? "local" : "idle"); renderDiag();
+  });
+}
+/* a document that should no longer exist: an issue's piece, or the Atlas import */
+function dropDoc(n) {
+  if (!knownDocs.has(n)) return;
+  writing = writing.then(async () => {
+    try { await Backend.remove(n); knownDocs.delete(n); delete lastSaved[n]; } catch (e) { noteErr("save", e); }
+  });
+}
+function dropPiece(id) { delete S.PC[id]; dropDoc("b_p_" + id); }
+window.addEventListener("beforeunload", () => flush());
+
+async function withTimeout(p, ms, fallback) {
+  let t; const timer = new Promise((r) => { t = setTimeout(() => r(fallback), ms); });
+  const v = await Promise.race([p, timer]); clearTimeout(t); return v;
+}
+/* diagnostics: what the viewer actually served, and the last failure codes */
+function noteErr(kind, e) {
+  S.diag[kind] = { code: (e && e.code) || (e && e.name) || "unknown", msg: String((e && e.message) || (e && e.code ? "" : e) || "").slice(0, 200), at: new Date().toLocaleTimeString() };
+  console.error("[book] " + kind + " failed", e);
+  renderDiag();
+}
+window.addEventListener("error", (ev) => noteErr("js", ev.error || { message: ev.message }));
+window.addEventListener("unhandledrejection", (ev) => noteErr("js", ev.reason));
+async function readPerms() {
+  try { const pm = window.claude && (await window.claude.use("permissions")); S.diag.perms = pm ? await pm.state() : null; } catch (e) { S.diag.perms = null; }
+  renderDiag();
+}
+async function boot() {
+  await Backend.init();
+  S.mode = Backend.kind; S.uid = Backend.uid; S.isOwner = Backend.isOwner;
+  S.diag.caps = Object.assign({}, Backend.caps);
+  readPerms();
+  let docs = {};
+  if (S.mode !== "noid") {
+    try { docs = await Backend.loadAll(); }
+    catch (e) { S.mode = "noid"; noteErr("boot", e); }
+  }
+  Object.keys(docs).forEach((n) => { knownDocs.add(n); lastSaved[n] = JSON.stringify(docs[n]); });
+  S.B = Object.assign(blankBook(), docs.b_book || {});
+  S.B.meta = Object.assign(blankBook().meta, S.B.meta || {});
+  S.ISS = Object.assign({ items: [] }, docs.b_issues || {});
+  S.SC = Object.assign({ items: [] }, docs.b_scenes || {});
+  S.AT = docs.b_atlas || null;
+  Object.keys(docs).forEach((n) => { if (n.startsWith("b_p_") && docs[n] && !docs[n].gone) S.PC[n.slice(4)] = docs[n]; });
+  if (!docs.b_book) {
+    /* first run: starter questions so the map is never empty */
+    STARTER.forEach(([a, q]) => addIssue(a, q, { starter: true }));
+    S.firstRun = true;
+    flushSoon();
+  }
+}
+
+/* ============================================================ Claude: calls, errors, prompts */
+const cut = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+
+function aiErrMsg(e) {
+  if (e instanceof Error) { noteErr("js", e); return "앱 내부 오류로 처리하지 못했어요 (" + cut(e.message, 60) + ")."; }
+  const c = e && e.code;
+  return aiErrCopy(c) + (c && c !== "cancelled" ? " [" + c + "]" : "");
+}
+function aiErrCopy(c) {
+  return ({
+    not_granted: "이 페이지에서 Claude를 쓰도록 허용되지 않았어요.",
+    sampling_disabled: "이 계정에서는 Claude 연결을 쓸 수 없어요.",
+    not_declared: "이 버전에서는 Claude 연결이 꺼져 있어요.",
+    capability_disabled: "이 화면에서는 Claude 연결을 쓸 수 없어요.",
+    capability_removed: "앱 버전이 오래돼 Claude 연결을 쓸 수 없어요.",
+    rate_limited: "요청이 몰려 잠시 쉬어야 해요. 조금 뒤에 다시 눌러 주세요.",
+    session_expired: "다시 로그인한 뒤 시도해 주세요.",
+    refused: "Claude가 이 요청에는 답하지 않았어요. 표현을 바꿔 다시 시도해 주세요.",
+    invalid_json: "답을 정리하는 데 실패했어요. 한 번 더 눌러 주세요.",
+    prompt_too_large: "보낼 내용이 너무 길어요. 기록 일부를 줄여 주세요.",
+    empty_completion: "빈 답이 돌아왔어요. 다시 누르면 더 가벼운 방식으로 시도해요.",
+    cancelled: "중단했어요.",
+  })[c] || "연결이 불안정해 답을 받지 못했어요. 다시 시도해 주세요.";
+}
+const PERMANENT = new Set(["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"]);
+function aiAvailable() { return Backend.aiAvailable() && !S.aiOff; }
+function aiOffMsg() { return S.aiOff ? aiErrMsg({ code: S.aiOff }) : "이 화면에서는 Claude 연결을 쓸 수 없어요. Claude 앱에서 열어 주세요."; }
+async function aiJSON(prompt, opts) {
+  if (!aiAvailable()) throw { code: "capability_disabled" };
+  const o = Object.assign({ modelTier: "default" }, opts || {});
+  if (S.aiLite) o.modelTier = "quick";
+  try { const r = await Backend.aiJSON(prompt, o); S.diag.ai = null; renderDiag(); return r; }
+  catch (e) {
+    if (!(e && e.code === "cancelled")) noteErr("ai", e);
+    if (e && e.code === "empty_completion") S.aiLite = true;
+    if (e && PERMANENT.has(e.code)) S.aiOff = e.code;
+    throw e;
+  }
+}
+/* Claude answered in prose instead of JSON: keep the reply */
+function proseReply(text) {
+  const t = String(text || "").trim();
+  if (!t) return "";
+  const m = t.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (m) { try { return JSON.parse('"' + m[1] + '"'); } catch (e) { return m[1]; } }
+  if (/^[\[{]/.test(t)) return "";
+  return t.replace(/```[a-z]*/g, "").trim();
+}
+
+const VOICE = "한국어. 담백하고 구체적으로. 번역투, 감성 조어, 교훈조, 과한 칭찬, 상담사 말투, 이모지 금지.";
+
+/* ---------------- material Claude reads ---------------- */
+function scenesIndex() {
+  return S.SC.items.map((s) => s.id + " | " + (s.when || "때 미상") + " | " + cut(s.title, 40) + " | " + cut(s.text, 90)).join("\n");
+}
+function atlasDigest(max) {
+  if (!S.AT || !S.AT.items) return "";
+  const out = []; let len = 0;
+  for (const x of S.AT.items) { const line = "- [" + x.k + "] " + cut(x.text, 160); if (len + line.length > max) break; out.push(line); len += line.length; }
+  return out.join("\n");
+}
+function sceneFull(id) { const s = S.SC.items.find((x) => x.id === id); return s ? "[" + (s.when || "때 미상") + "] " + s.title + "\n" + s.text : ""; }
+
+/* ---------------- issue suggestions ---------------- */
+async function aiSuggestIssues(area) {
+  const have = S.ISS.items.map((x) => "- " + x.q).join("\n");
+  const rej = (S.B.meta.rejected || []).map((r) => "- " + (r.q || r)).join("\n");
+  const lite = S.aiLite;
+  const prompt =
+    "당신은 '보통 사람이 합리적으로 생각하는 과정'을 담는 삶의 지혜 책의 기획 편집자입니다. 저자에게 물을 이슈 질문을 제안합니다.\n" +
+    "규칙:\n- 이슈 질문은 사람마다 의견이 갈리는 삶의 문제여야 한다. 정답이 뻔한 질문, 사실을 묻는 질문은 안 된다.\n- 아래 기록을 보고 이 저자가 뚜렷한 의견이나 특이한 판단을 가졌을 만한 것부터 고른다.\n- 질문 문장은 책의 꼭지 제목이 될 수 있게 일반적인 말로 쓴다. 저자의 사생활을 질문에 드러내지 않는다.\n- why에는 그 질문을 고른 근거가 된 기록을 한 줄로 적는다. 근거가 없으면 빈 문자열.\n- 이미 있는 질문, 저자가 지운 질문과 겹치지 않게.\n- " + VOICE + "\n" +
+    (area ? "- 분야는 '" + AREA_BY[area].name + "'(" + area + ")만.\n" : "- 여러 분야에 고르게.\n") +
+    "\n[분야]\n" + AREAS.map((a) => a.id + " = " + a.name).join(", ") +
+    "\n\n[이미 있는 질문]\n" + (have || "(없음)") + "\n\n[저자가 지운 질문]\n" + (rej || "(없음)") +
+    "\n\n[나의 기록: 저자가 들려준 장면]\n" + (scenesIndex() || "(없음)") +
+    "\n\n[Atlas에서 가져온 기록]\n" + (atlasDigest(lite ? 3000 : 12000) || "(없음)") +
+    '\n\n[응답 형식] JSON 하나로만 답하세요.\n{"issues": [{"area": "' + AREAS.map((a) => a.id).join("|") + '", "q": "이슈 질문", "why": "근거 기록 한 줄"}]}\n- ' + (area ? "4" : "8") + "개.";
+  const r = await aiJSON(prompt, { cache: false });
+  if (!r || !Array.isArray(r.issues)) throw { code: "invalid_json" };
+  return r.issues.filter((x) => x && x.q);
+}
+
+/* ---------------- one interview turn ---------------- */
+function ivRules(it, pc) {
+  const iv = pc.iv, sl = iv.slots || {}, ck = iv.check || {};
+  const failing = CHECKS.filter((c) => ck[c.id] === false);
+  const lastU = [...iv.turns].reverse().find((t) => t.role === "user");
+  const short = lastU && String(lastU.content).replace(/\s/g, "").length <= SHORT_ANSWER;
+  const withScenes = failing.length && iv.n >= 2 && S.SC.items.length;
+  return "당신은 삶의 지혜 책을 저자와 함께 만드는 취재 기자이자 편집자입니다. 저자는 평범한 직장인이고, 이 책은 보통 사람이 합리적으로 생각하는 과정을 보여 줍니다.\n" +
+    "[이번 이슈] " + it.q + "\n\n" +
+    "목표: 저자에게서 아래 다섯 칸을 차례로 끌어낸다. 원칙은 맨 마지막에 묻는다.\n" + SLOTS.map((s, i) => (i + 1) + ". " + s.name + ": " + s.q).join("\n") + "\n\n" +
+    "규칙:\n- 존댓말. 한 번에 질문은 하나. 저자의 말을 한 줄로 되짚은 뒤 묻는다. reply는 2~4문장.\n" +
+    "- 추상적인 답에는 한 번 '예를 들면요?'처럼 구체적인 기준, 비교, 숫자를 묻는다.\n" +
+    "- 반론 칸에서는 가장 강한 반대 의견(흔한 통념이나 알려진 이론)을 실제로 제기하고 어떻게 답하는지 묻는다.\n" +
+    "- 답할 때마다 세 가지를 점검한다: " + CHECKS.map((c) => c.name + "(" + c.d + ")").join(", ") + ".\n" +
+    "- 세 가지가 모두 통과하면 저자의 과거 기록을 찾지 않는다. 논리만으로 충분하면 장면은 필요 없다.\n" +
+    "- 하나라도 부족하고 '예를 들면요?'로도 채워지지 않을 때만 [나의 기록]에서 이 의견과 맞닿은 장면을 골라 scenes에 id를 넣고, reply에서 '그때와 같은 생각인가요?'처럼 확인을 묻는다.\n" +
+    "- 다섯 칸이 차고 점검이 모두 통과하면 done을 true로 하고 reply에서 초안을 써도 되겠다고 알린다.\n" +
+    "- 진단하거나 저자를 평가하지 않는다. " + VOICE + "\n" +
+    (short ? "- 저자의 직전 답이 매우 짧다. 다음 질문은 보기 2~3개를 주거나('A에 가깝나요, B에 가깝나요?') 반대 경우와 대조해서 묻는다.\n" : "") +
+    "\n[지금까지 채운 칸]\n" + SLOTS.map((s) => s.name + ": " + (sl[s.id] ? cut(sl[s.id], 160) : "(비어 있음)")).join("\n") +
+    "\n[지난 점검] " + (CHECKS.map((c) => c.name + " " + (ck[c.id] === true ? "통과" : ck[c.id] === false ? "부족" : "-")).join(", ")) + (ck.note ? " · " + ck.note : "") +
+    "\n[답한 횟수] " + iv.n + "/" + IV_CAP +
+    (withScenes ? "\n\n[나의 기록: id | 때 | 제목 | 요약]\n" + scenesIndex() : "") +
+    (iv.scenes.length ? "\n\n[저자가 이 이슈의 근거로 붙인 장면]\n" + iv.scenes.map(sceneFull).join("\n\n") : "");
+}
+const IV_FORMAT = "[응답 형식] JSON 밖에 아무것도 쓰지 말고, 아래 JSON 하나로만 답하세요. 저자에게 할 말은 모두 reply 안에 넣습니다.\n" +
+  '{"reply": "저자에게 할 말(마지막은 질문 하나)", "slots": {"opinion": "", "reason": "", "counter": "", "cond": "", "principle": ""}, "quotes": ["저자가 이번 메시지에서 한 말 중 책에 그대로 쓸 만한 표현, 토씨까지 원문 그대로"], "check": {"concrete": true, "fresh": false, "robust": false, "note": "부족한 점 한 줄"}, "scenes": [], "done": false}\n' +
+  "- slots: 이번 답으로 새로 채워지거나 더 정확해진 칸만, 저자의 말에 가깝게 한두 문장으로. 바뀌지 않은 칸은 빈 문자열.\n- quotes: 없으면 빈 배열. 요약하거나 다듬지 말 것.\n- check: 지금까지의 답 전체 기준. 아직 판단할 수 없으면 false.\n- scenes: [나의 기록]의 id만. 없으면 빈 배열.";
+
+async function aiInterviewTurn(it, pc, opening) {
+  const rules = ivRules(it, pc);
+  let input;
+  if (opening) input = [{ role: "user", content: rules + "\n\n인터뷰를 시작합니다. reply에 이 이슈를 한 줄로 소개하고 첫 질문(의견)을 담아 주세요.\n\n" + IV_FORMAT }];
+  else {
+    let hist = pc.iv.turns.slice(-24).map((t) => ({ role: t.role, content: String(t.content) }));
+    while (hist.length && hist[hist.length - 1].role !== "user") hist.pop();
+    input = [{ role: "user", content: rules + "\n\n" + IV_FORMAT + "\n\n(여기까지가 지침입니다. 이어지는 것이 실제 대화입니다.)" }].concat(hist);
+    const last = input[input.length - 1];
+    input[input.length - 1] = { role: "user", content: last.content + "\n\n(답은 위 [응답 형식]의 JSON 하나로)" };
+  }
+  let r;
+  try { r = await aiJSON(input, { cache: false }); }
+  catch (e) {
+    const t = e && e.code === "invalid_json" ? proseReply(e.text) : "";
+    if (t) return { reply: t, slots: {}, quotes: [], check: null, scenes: [], done: false };
+    throw e;
+  }
+  if (!r || !r.reply) throw { code: "invalid_json" };
+  return r;
+}
+
+/* ---------------- draft ---------------- */
+async function aiDraft(it, pc, ask) {
+  const iv = pc.iv, sl = iv.slots || {};
+  const said = iv.turns.filter((t) => t.role === "user" && !t.meta).map((t) => "- " + t.content).join("\n");
+  const prev = pc.draft && pc.draft.cur ? SECTIONS.map((s) => "## " + s.name + "\n" + (pc.draft.cur[s.id] || "")).join("\n\n") : "";
+  const prompt =
+    "당신은 삶의 지혜 책의 대필 작가입니다. 저자와의 인터뷰로 꼭지 한 편의 초안을 씁니다. 저자가 이 초안을 고쳐 자기 글로 만듭니다.\n" +
+    "[이슈] " + it.q + "\n\n" +
+    "규칙:\n- 저자의 1인칭('나')으로 쓴다. 저자는 평범한 직장인이다. 현명한 척하지 말고, 생각한 과정을 보여 준다.\n" +
+    "- [인용]의 표현을 최대한 그대로 살린다. 저자가 쓰지 않은 멋진 문장을 지어내지 않는다.\n" +
+    "- 저자가 말하지 않은 사실, 사건, 숫자를 만들지 않는다. 장면 칸은 [근거 장면]이 있을 때만 쓰고, 없으면 빈 문자열.\n" +
+    "- 연결 칸에서는 관련 이론이나 연구를 이름과 저자·연도로 밝히고, 그 이론과 저자의 생각이 같은 점과 다른 점, 그리고 반론 하나를 쓴다. 확실하지 않은 이론은 쓰지 않는다.\n" +
+    "- 독자에게 칸은 독자가 스스로 적용해 볼 질문 하나.\n" +
+    "- 전체 2,000~2,500자(A4 두 장 안팎). " + VOICE + "\n" +
+    "\n[인터뷰 정리]\n" + SLOTS.map((s) => s.name + ": " + (sl[s.id] || "(없음)")).join("\n") +
+    "\n\n[인용: 저자의 원래 표현]\n" + (iv.quotes.map((q) => "- " + q).join("\n") || "(없음)") +
+    "\n\n[저자가 한 말 전체]\n" + (said || "(없음)") +
+    "\n\n[근거 장면]\n" + (iv.scenes.map(sceneFull).join("\n\n") || "(없음)") +
+    (prev && ask ? "\n\n[지금 원고]\n" + prev + "\n\n[저자의 요청] " + ask + "\n위 원고를 요청대로 고쳐 다시 쓴다. 저자가 직접 고친 문장은 되도록 그대로 둔다." : "") +
+    '\n\n[응답 형식] JSON 하나로만 답하세요.\n{"title": "꼭지 제목", "sections": {' + SECTIONS.map((s) => '"' + s.id + '": "' + s.name + '"').join(", ") + '}, "theory": [{"name": "이론·연구 이름", "who": "저자·연도", "use": "어떻게 연결했나 한 줄"}]}';
+  const r = await aiJSON(prompt, { cache: false });
+  if (!r || !r.sections || typeof r.sections !== "object") throw { code: "invalid_json" };
+  const sec = {}; SECTIONS.forEach((s) => (sec[s.id] = String(r.sections[s.id] || "").trim()));
+  return { title: String(r.title || it.q), sections: sec, theory: Array.isArray(r.theory) ? r.theory.filter((t) => t && t.name) : [] };
+}
+
+/* ============================================================ HOME · 개요 */
+const GOAL_PIECES = 2; /* first goal: proposal + two sample pieces */
+
+function statusCounts() {
+  const c = {}; STATUS.forEach((s) => (c[s.id] = 0));
+  S.ISS.items.forEach((x) => (c[x.status] = (c[x.status] || 0) + 1));
+  return c;
+}
+/* one next step, never a list */
+function nextStep() {
+  const by = (st) => S.ISS.items.find((x) => x.status === st);
+  let it;
+  if ((it = by("draft"))) return { t: "원고 고치기", d: it.q, act: "openDraft", id: it.id, btn: "원고 열기" };
+  if ((it = by("ready"))) return { t: "초안 쓰기", d: it.q, act: "openDraft", id: it.id, btn: "초안으로" };
+  if ((it = by("talk"))) return { t: "인터뷰 이어 하기", d: it.q, act: "openIv", id: it.id, btn: "이어 하기" };
+  return { t: "이슈 하나 고르기", d: "이슈 지도에서 의견이 가장 뚜렷한 질문 하나를 골라 인터뷰를 시작해요.", act: "go", view: "map", btn: "이슈 지도" };
+}
+function viewHome() {
+  const c = statusCounts(), n = nextStep(), done = c.done;
+  const board = STATUS.map((s) => `<div class="kb ${s.id}"><span class="n num">${c[s.id]}</span><span class="l">${esc(s.name)}</span></div>`).join("");
+  const recent = S.ISS.items.filter((x) => x.status !== "idea").slice(-5).reverse();
+  return `<div class="page-head"><div><div class="eyebrow">Book · 개요</div><h1>책 쓰기</h1><p class="lede">이슈 하나를 골라 의견을 말하면 Claude가 묻고, 반론을 걸고, 초안을 씁니다. 초안을 고칠수록 내 문장이 늘어납니다.</p></div></div>
+<div class="stack">
+<section class="sheet pad lift stack">
+  <div class="next-card"><div><div class="t">${esc(n.t)}</div><div class="d">${esc(n.d)}</div></div><button class="btn primary" data-act="${n.act}" ${n.id ? `data-id="${n.id}"` : ""} ${n.view ? `data-view="${n.view}"` : ""}>${esc(n.btn)}${I.arrow}</button></div>
+  <div class="kboard">${board}</div>
+</section>
+<div class="grid2">
+<section class="sheet pad stack">
+  <h3>첫 목표</h3>
+  <p class="muted">출간기획서와 샘플 ${GOAL_PIECES}꼭지. 샘플이 실제로 읽히는지 확인한 뒤에 나머지를 씁니다.</p>
+  <div class="goal-row"><span>샘플 꼭지</span><div class="meter"><i style="width:${Math.min(100, (done / GOAL_PIECES) * 100)}%"></i></div><span class="mono">${Math.min(done, GOAL_PIECES)}/${GOAL_PIECES}</span></div>
+  <div class="goal-row"><span>출간기획서</span><div class="meter"><i style="width:0%"></i></div><span class="mono muted">다음 판</span></div>
+</section>
+<section class="sheet pad stack">
+  <h3>최근 다룬 이슈</h3>
+  ${recent.length ? `<ul class="list-plain">${recent.map((x) => `<li><span class="tag st-${x.status}">${esc(STATUS_BY[x.status].name)}</span><a href="#" data-act="${x.status === "talk" || x.status === "ready" ? "openIv" : "openDraft"}" data-id="${x.id}">${esc(x.q)}</a></li>`).join("")}</ul>` : `<p class="empty">아직 인터뷰한 이슈가 없어요.</p>`}
+  <p class="muted" style="font-size:12px">나의 기록: 장면 ${S.SC.items.length}개${S.AT ? ` · Atlas 기록 ${S.AT.items.length}개` : ""}</p>
+</section>
+</div>
+<details class="sheet pad diag diag-home"><summary>연결 상태</summary><div class="diag-body"></div></details>
+</div>`;
+}
+
+/* ============================================================ ISSUE MAP · 이슈 지도 (the book's table of contents) */
+function viewIssues() {
+  const f = S.ui.area || "all", busy = S.ui.busy.sug;
+  const areas = AREAS.filter((a) => f === "all" || a.id === f);
+  const chips = [["all", "전체"]].concat(AREAS.map((a) => [a.id, a.name])).map(([k, l]) => {
+    const n = k === "all" ? S.ISS.items.length : S.ISS.items.filter((x) => x.area === k).length;
+    return `<button class="chip ${f === k ? "on" : ""}" data-act="area" data-v="${k}">${esc(l)} <span class="mono muted">${n}</span></button>`;
+  }).join("");
+  const row = (x) => `<li class="iss">
+    <div class="q"><span class="tag st-${x.status}">${esc(STATUS_BY[x.status].name)}</span><span>${esc(x.q)}</span>${x.ai ? '<span class="tag ai">Claude 제안</span>' : ""}</div>
+    ${x.why ? `<div class="why">근거: ${esc(x.why)}</div>` : ""}
+    <div class="ops">${x.status === "draft" || x.status === "done" ? `<button class="btn sm" data-act="openDraft" data-id="${x.id}">원고</button>` : ""}<button class="btn sm ${x.status === "idea" ? "primary" : ""}" data-act="openIv" data-id="${x.id}">${x.status === "idea" ? "인터뷰 시작" : "인터뷰"}</button><button class="btn sm ghost" data-act="issueDel" data-id="${x.id}" aria-label="지우기" title="지우기">${I.trash}</button></div>
+  </li>`;
+  const groups = areas.map((a) => {
+    const xs = S.ISS.items.filter((x) => x.area === a.id);
+    if (!xs.length && f === "all") return "";
+    return `<section class="sheet pad area-g"><h3>${esc(a.name)} <span class="mono muted">${xs.length}</span></h3>${xs.length ? `<ul class="list-plain">${xs.map(row).join("")}</ul>` : '<p class="empty">아직 질문이 없어요.</p>'}</section>`;
+  }).join("");
+  const rej = S.B.meta.rejected || [];
+  return `<div class="page-head"><div><div class="eyebrow">Issues · 목차</div><h1>이슈 지도</h1><p class="lede">책의 목차가 되는 질문들입니다. 분야마다 의견이 갈리는 삶의 문제를 모읍니다. 의견이 가장 뚜렷한 것부터 인터뷰하세요.</p></div></div>
+<div class="stack">
+<div class="topics">${chips}</div>
+<section class="sheet pad stack">
+  <div class="row add-iss"><select class="input" id="newArea" aria-label="분야">${AREAS.map((a) => `<option value="${a.id}" ${a.id === f ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select><input class="input" id="newQ" placeholder="질문을 직접 적기 (예: 이직은 언제 해야 하나?)"><button class="btn" data-act="issueAdd">${I.plus}추가</button></div>
+  <div class="row"><button class="btn accent" data-act="issueSuggest" ${busy || !aiAvailable() ? "disabled" : ""}>${busy ? '<span class="spinner"></span>고르는 중' : I.spark + (f === "all" ? "Claude에게 질문 제안받기" : AREA_BY[f].name + " 질문 제안받기")}</button><span class="muted" style="font-size:12px">${aiAvailable() ? "나의 기록과 Atlas 기록을 읽고 의견이 뚜렷할 만한 질문을 고릅니다. 지운 질문은 다시 제안하지 않아요." : esc(aiOffMsg())}</span></div>
+  ${S.ui.err.sug ? `<p class="banner">${esc(S.ui.err.sug)}</p>` : ""}
+</section>
+${groups || '<p class="empty">질문이 없어요.</p>'}
+${rej.length ? `<details class="sheet pad"><summary>지운 질문 ${rej.length}개</summary><ul class="list-plain">${rej.map((r, i) => `<li><span>${esc(r.q || r)}</span><button class="btn sm ghost" data-act="issueRestore" data-i="${i}">되살리기</button></li>`).join("")}</ul></details>` : ""}
+</div>`;
+}
+
+/* ============================================================ INTERVIEW · 인터뷰 (one issue at a time) */
+function issuePicker(kind) {
+  const xs = S.ISS.items.filter((x) => (kind === "iv" ? x.status !== "done" : x.status === "draft" || x.status === "done" || x.status === "ready"));
+  const title = kind === "iv" ? "인터뷰할 이슈를 고르세요" : "원고를 열 이슈를 고르세요";
+  return `<div class="page-head"><div><div class="eyebrow">${kind === "iv" ? "Interview" : "Draft"}</div><h1>${kind === "iv" ? "인터뷰" : "원고"}</h1><p class="lede">${title}. 이슈는 이슈 지도에서 더하거나 지울 수 있어요.</p></div></div>
+<section class="sheet pad">${xs.length ? `<ul class="list-plain">${xs.map((x) => `<li class="iss"><div class="q"><span class="tag st-${x.status}">${esc(STATUS_BY[x.status].name)}</span><span class="tag">${esc(AREA_BY[x.area].name)}</span><a href="#" data-act="${kind === "iv" ? "openIv" : "openDraft"}" data-id="${x.id}">${esc(x.q)}</a></div></li>`).join("")}</ul>` : `<p class="empty">${kind === "iv" ? "이슈가 없어요." : "아직 초안을 쓸 만큼 인터뷰한 이슈가 없어요."} <a href="#map" data-go="map">이슈 지도로</a></p>`}</section>`;
+}
+function viewInterview() {
+  const it = issueById(S.ui.issue);
+  if (!it) return issuePicker("iv");
+  const pc = ensurePiece(it.id), iv = pc.iv, busy = S.ui.busy.iv, err = S.ui.err.iv;
+  let log;
+  if (!iv.turns.length && !busy) {
+    log = `<div class="iv-empty"><div class="eyebrow">${esc(AREA_BY[it.area].name)}</div><h2>${esc(it.q)}</h2>
+      <p class="muted">Claude가 의견, 이유, 반론, 조건을 차례로 묻고 원칙은 맨 마지막에 묻습니다. 논리만으로 충분하면 지난 기록을 찾지 않아요.</p>
+      ${err ? `<p class="banner">${esc(err)}</p>` : ""}
+      ${aiAvailable() ? `<button class="btn accent" data-act="ivStart">${I.chat}${err ? "다시 시작" : "인터뷰 시작"}</button>` : `<p class="banner">${esc(aiOffMsg())}</p>`}</div>`;
+  } else {
+    log = iv.turns.map((t, ti) => {
+      if (t.role === "user") return `<div class="msg u"><span class="who">나 · ${fmtTime(t.at)}</span><div class="bub">${esc(t.content)}</div></div>`;
+      const sug = (t.sug || []).filter((id) => S.SC.items.some((s) => s.id === id) && !iv.scenes.includes(id) && !(t.no || []).includes(id));
+      return `<div class="msg a"><span class="who">CLAUDE · ${fmtTime(t.at)}</span><div class="bub">${esc(t.content)}</div>${sug.length ? `<div class="facts">${sug.map((id) => { const s = S.SC.items.find((x) => x.id === id); return `<span class="fact-chip"><b>근거 장면?</b>${esc((s.when ? s.when + " · " : "") + s.title)}<button class="yes" data-act="sceneAttach" data-id="${id}" data-t="${ti}" title="근거로 붙이기">붙이기</button><button data-act="sceneNo" data-id="${id}" data-t="${ti}" aria-label="아니다" title="아니다">×</button></span>`; }).join("")}</div>` : ""}</div>`;
+    }).join("");
+    if (busy) log += `<div class="msg a"><span class="who">CLAUDE</span><div class="bub typing"><span class="spinner"></span><span id="ivElapsed">생각하는 중</span></div></div>`;
+    if (err) log += `<div class="banner" style="align-self:stretch;align-items:center"><span style="flex:1">${esc(err)}</span><button class="btn sm" data-act="ivRetry">다시 보내기</button></div>`;
+  }
+  const canDraft = !!(iv.slots.opinion && iv.slots.reason);
+  const pend = (iv.pend || iv.n >= IV_CAP) && !busy && iv.turns.length;
+  const pendBar = pend ? `<div class="iv-pend"><span>${iv.pend ? "충분히 들었어요. 초안을 써 볼까요?" : `${IV_CAP}번 답했어요. 초안으로 넘어가도 돼요.`}</span><span class="row" style="gap:6px"><button class="btn sm primary" data-act="openDraft" data-id="${it.id}">초안 쓰기</button><button class="btn sm ghost" data-act="ivStay">더 이야기하기</button></span></div>` : "";
+  const inputOff = busy || !aiAvailable() || !iv.turns.length;
+  const chat = `<section class="sheet chat lift"><div class="chat-log" id="chatLog">${log}</div><div class="chat-in">${pendBar}<div class="row"><textarea class="input" id="ivInput" rows="2" placeholder="${iv.turns.length ? "생각나는 대로 답해 주세요. Enter로 보내고 Shift+Enter로 줄을 바꿔요." : "먼저 인터뷰를 시작해 주세요."}" ${inputOff ? "disabled" : ""}>${esc(S.ui.ivDraft || "")}</textarea><button class="btn primary" data-act="ivSend" ${inputOff ? "disabled" : ""} aria-label="보내기">${I.send}</button></div>
+    <div class="row iv-foot" style="justify-content:space-between"><span class="muted" style="font-size:11.5px">답 ${iv.n}/${IV_CAP} · 인용 ${iv.quotes.length}</span><span class="row" style="gap:6px">${iv.turns.length ? `<button class="btn sm" data-act="openDraft" data-id="${it.id}" ${canDraft ? "" : "disabled title=\"의견과 이유가 채워지면 쓸 수 있어요\""}>초안 쓰기</button><button class="btn sm ghost" data-act="ivClear">대화 비우기</button>` : ""}</span></div></div></section>`;
+
+  const ck = iv.check || {};
+  const slots = SLOTS.map((s) => `<div class="slot ${iv.slots[s.id] ? "on" : ""}"><div class="h"><b>${esc(s.name)}</b><span class="muted">${esc(s.q)}</span></div><textarea class="input sm" rows="2" data-bind="PC.${it.id}.iv.slots.${s.id}" placeholder="(비어 있음)">${esc(iv.slots[s.id] || "")}</textarea></div>`).join("");
+  const checks = CHECKS.map((c) => `<span class="ck ${ck[c.id] === true ? "ok" : ck[c.id] === false ? "no" : ""}" title="${esc(c.d)}">${ck[c.id] === true ? "✓" : ck[c.id] === false ? "–" : "·"} ${esc(c.name)}</span>`).join("");
+  const allOk = CHECKS.every((c) => ck[c.id] === true);
+  const quotes = iv.quotes.map((q, i) => `<li><span>“${esc(q)}”</span><button class="btn sm ghost" data-act="quoteDel" data-i="${i}" aria-label="인용 지우기">×</button></li>`).join("");
+  const scenes = iv.scenes.map((id) => { const s = S.SC.items.find((x) => x.id === id); return s ? `<li><span>${esc((s.when ? s.when + " · " : "") + s.title)}</span><button class="btn sm ghost" data-act="sceneDetach" data-id="${id}" aria-label="떼기">×</button></li>` : ""; }).join("");
+  const side = `<aside class="stack">
+  <section class="sheet side-card"><div class="eyebrow">${esc(AREA_BY[it.area].name)} · ${esc(STATUS_BY[it.status].name)}</div><h4 class="iv-q">${esc(it.q)}</h4><a href="#" data-act="go" data-view="iv" data-clear="1" style="font-size:12px">다른 이슈</a></section>
+  <section class="sheet side-card"><h4>점검</h4><div class="cks">${checks}</div><p class="muted" style="font-size:11.5px;margin-top:6px">${ck.note ? esc(ck.note) : allOk ? "논리만으로 충분해요. 지난 기록은 찾지 않아요." : "셋 다 통과하면 기록을 찾지 않아요. 부족하면 먼저 예를 묻고, 그래도 부족할 때만 근거 장면을 제안해요."}</p></section>
+  <section class="sheet side-card"><h4>다섯 칸</h4><div class="slots">${slots}</div><p class="muted" style="font-size:11.5px;margin-top:6px">Claude가 답을 요약해 채워요. 틀리면 바로 고치세요.</p></section>
+  <section class="sheet side-card"><h4>인용 <span class="mono muted" style="font-size:11px">${iv.quotes.length}</span></h4>${quotes ? `<ul class="list-plain quotes">${quotes}</ul>` : '<p class="muted" style="font-size:12px">초안에 그대로 쓸 내 표현이 여기에 쌓여요.</p>'}</section>
+  <section class="sheet side-card"><h4>근거 장면</h4>${scenes ? `<ul class="list-plain">${scenes}</ul>` : '<p class="muted" style="font-size:12px">붙인 장면이 없어요. 필요할 때만 붙입니다.</p>'}</section>
+</aside>`;
+  return `<div class="page-head"><div><div class="eyebrow">Interview · 인터뷰</div><h1>인터뷰</h1></div></div><div class="iv">${chat}${side}</div>`;
+}
+function fmtTime(iso) { if (!iso) return ""; const d = new Date(iso); return d.getMonth() + 1 + "/" + d.getDate() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+function afterInterview() {
+  const lg = $("#chatLog"); if (lg) lg.scrollTop = lg.scrollHeight;
+  const inp = $("#ivInput"); if (inp && !inp.disabled && S.ui.focusIv) { inp.focus(); S.ui.focusIv = false; }
+}
+let ivTimer = null;
+function ivBusy(on) {
+  S.ui.busy.iv = on; clearInterval(ivTimer);
+  if (on) { const t0 = Date.now(); ivTimer = setInterval(() => { const el = $("#ivElapsed"); if (el) el.textContent = "생각하는 중 · " + Math.round((Date.now() - t0) / 1000) + "초"; }, 1000); }
+}
+async function ivRun(opening) {
+  const it = issueById(S.ui.issue); if (!it) return;
+  const pc = ensurePiece(it.id), iv = pc.iv;
+  S.ui.err.iv = null; ivBusy(true); render();
+  try {
+    const r = await aiInterviewTurn(it, pc, opening);
+    const sl = r.slots && typeof r.slots === "object" ? r.slots : {};
+    SLOTS.forEach((s) => { const v = String(sl[s.id] || "").trim(); if (v) iv.slots[s.id] = v; });
+    (Array.isArray(r.quotes) ? r.quotes : []).forEach((q) => { q = String(q || "").trim(); if (q.length >= 4 && !iv.quotes.includes(q)) iv.quotes.push(q); });
+    if (r.check && typeof r.check === "object") { const c = {}; CHECKS.forEach((k) => (c[k.id] = r.check[k.id] === true)); c.note = String(r.check.note || ""); iv.check = c; }
+    const sug = (Array.isArray(r.scenes) ? r.scenes : []).map(String).filter((id) => S.SC.items.some((s) => s.id === id) && !iv.scenes.includes(id));
+    if (!opening) iv.n++;
+    if (r.done === true) iv.pend = true;
+    iv.turns.push({ role: "assistant", content: String(r.reply), at: nowISO(), sug });
+    if (iv.turns.length > 160) iv.turns = iv.turns.slice(-160);
+    if (it.status === "idea") it.status = "talk";
+    if (it.status === "talk" && SLOTS.every((s) => iv.slots[s.id]) && CHECKS.every((c) => iv.check[c.id])) it.status = "ready";
+    markDirty();
+    S.ui.focusIv = true;
+  } catch (e) {
+    S.ui.err.iv = aiErrMsg(e);
+  }
+  ivBusy(false); render();
+}
+
+/* ============================================================ DRAFT · 원고
+   Claude writes the first draft; the author rewrites it. "My sentences" = sentences that are not
+   in Claude's latest draft, plus sentences the author wrote before a rewrite that Claude kept.
+   It should rise piece by piece if the author's voice is taking over. */
+const splitSent = (t) => String(t || "").split(/(?<=[.!?。…])\s+|\n+/).map((s) => s.trim()).filter((s) => s.length >= 2);
+function mineStats(pc) {
+  const d = pc.draft; if (!d || !d.ai) return null;
+  const aiSet = new Set(); SECTIONS.forEach((s) => splitSent(d.ai.sections[s.id]).forEach((x) => aiSet.add(x)));
+  const own = new Set(d.mine || []);
+  const quotes = (pc.iv.quotes || []).filter((q) => q.length >= 6);
+  let n = 0, mine = 0, quoted = 0; const per = {};
+  SECTIONS.forEach((s) => {
+    const xs = splitSent(d.cur[s.id]); let m = 0;
+    xs.forEach((x) => { if (!aiSet.has(x) || own.has(x)) m++; if (quotes.some((q) => x.includes(q))) quoted++; });
+    per[s.id] = xs.length ? Math.round((m / xs.length) * 100) : null;
+    n += xs.length; mine += m;
+  });
+  return { n, mine: n ? Math.round((mine / n) * 100) : 0, quoted: n ? Math.round((quoted / n) * 100) : 0, per };
+}
+function pieceMD(it, pc) {
+  const d = pc.draft; if (!d) return "";
+  const body = SECTIONS.filter((s) => (d.cur[s.id] || "").trim()).map((s) => "## " + s.name + "\n\n" + d.cur[s.id].trim()).join("\n\n");
+  const th = (d.theory || []).map((t) => "- " + t.name + (t.who ? " (" + t.who + ")" : "") + (t.use ? ": " + t.use : "")).join("\n");
+  return "# " + (d.title || it.q) + "\n\n> " + it.q + "\n\n" + body + (th ? "\n\n---\n참고한 이론 (확인 필요)\n" + th : "") + "\n";
+}
+function viewDraft() {
+  const it = issueById(S.ui.issue);
+  if (!it) return issuePicker("draft");
+  const pc = ensurePiece(it.id), d = pc.draft, busy = S.ui.busy.draft, err = S.ui.err.draft;
+  const head = `<div class="page-head"><div><div class="eyebrow">Draft · ${esc(AREA_BY[it.area].name)}</div><h1>원고</h1><p class="lede">${esc(it.q)}</p></div><div class="row"><button class="btn sm ghost" data-act="openIv" data-id="${it.id}">${I.chat}인터뷰로</button><a href="#" class="btn sm ghost" data-act="go" data-view="draft" data-clear="1">다른 이슈</a></div></div>`;
+  if (!d) {
+    const iv = pc.iv, ok = iv.slots.opinion && iv.slots.reason;
+    return head + `<section class="sheet pad stack lift" style="max-width:720px">
+      <h3>아직 초안이 없어요</h3>
+      <p class="muted">인터뷰에서 채운 다섯 칸과 인용 ${iv.quotes.length}개${iv.scenes.length ? ", 근거 장면 " + iv.scenes.length + "개" : ""}로 Claude가 초안을 씁니다. 저자의 표현을 살리고, 말하지 않은 사실은 만들지 않습니다.</p>
+      <ul class="list-plain">${SLOTS.map((s) => `<li><b style="min-width:44px">${esc(s.name)}</b><span class="${iv.slots[s.id] ? "" : "muted"}">${esc(iv.slots[s.id] || "(비어 있음)")}</span></li>`).join("")}</ul>
+      ${err ? `<p class="banner">${esc(err)}</p>` : ""}
+      <div class="row"><button class="btn accent" data-act="draftWrite" ${busy || !ok || !aiAvailable() ? "disabled" : ""}>${busy ? '<span class="spinner"></span>쓰는 중 (1분 안팎)' : I.edit + "초안 쓰기"}</button>${ok ? "" : '<span class="muted" style="font-size:12px">의견과 이유가 채워져야 쓸 수 있어요.</span>'}${aiAvailable() ? "" : `<span class="muted" style="font-size:12px">${esc(aiOffMsg())}</span>`}</div>
+    </section>`;
+  }
+  const st = mineStats(pc);
+  const secs = SECTIONS.map((s) => {
+    const v = d.cur[s.id] || "", p = st && st.per[s.id];
+    if (s.opt && !v.trim() && !(d.ai.sections[s.id] || "").trim()) return `<div class="sec empty-sec"><div class="h"><b>${esc(s.name)}</b><span class="muted">근거 장면이 없어 비워 뒀어요. 필요하면 직접 쓰세요.</span></div><textarea class="input prose" rows="2" data-bind="PC.${it.id}.draft.cur.${s.id}" data-grow="1" rows="1"></textarea></div>`;
+    return `<div class="sec"><div class="h"><b>${esc(s.name)}</b>${p != null ? `<span class="mine mono" title="Claude 초안에 없는 문장의 비율">내 문장 ${p}%</span>` : ""}</div><textarea class="input prose" data-bind="PC.${it.id}.draft.cur.${s.id}" data-grow="1" rows="2">${esc(v)}</textarea></div>`;
+  }).join("");
+  const theory = (d.theory || []).map((t) => `<li><div><b>${esc(t.name)}</b>${t.who ? ` <span class="muted">${esc(t.who)}</span>` : ""}${t.use ? `<div class="muted" style="font-size:12px">${esc(t.use)}</div>` : ""}</div></li>`).join("");
+  const side = `<aside class="stack">
+  <section class="sheet side-card"><h4>내 문장</h4><div class="big num">${st ? st.mine : 0}<small>%</small></div><div class="meter"><i style="width:${st ? st.mine : 0}%"></i></div><p class="muted" style="font-size:11.5px;margin-top:6px">Claude 초안에 없는 문장의 비율. 인용이 든 문장 ${st ? st.quoted : 0}%. 고칠수록 올라가요.</p></section>
+  <section class="sheet side-card"><h4>연결한 이론 <span class="tag est">확인 필요</span></h4>${theory ? `<ul class="list-plain">${theory}</ul>` : '<p class="muted" style="font-size:12px">없어요.</p>'}<p class="muted" style="font-size:11.5px;margin-top:6px">Claude가 붙인 이름과 연도는 틀릴 수 있어요. 책에 넣기 전에 직접 확인하세요.</p></section>
+  <section class="sheet side-card stack"><h4>다시 쓰기</h4><textarea class="input sm" id="draftAsk" rows="3" placeholder="예: 연결 부분을 줄이고, 말투를 더 짧게">${esc(S.ui.draftAsk || "")}</textarea><button class="btn sm" data-act="draftWrite" data-ask="1" ${busy || !aiAvailable() ? "disabled" : ""}>${busy ? '<span class="spinner"></span>쓰는 중' : "요청대로 다시 쓰기"}</button>${err ? `<p class="banner">${esc(err)}</p>` : ""}<p class="muted" style="font-size:11.5px">지금 원고는 판 기록에 남기고 새로 씁니다.</p></section>
+  <section class="sheet side-card stack"><h4>판 기록 <span class="mono muted" style="font-size:11px">${(d.hist || []).length}</span></h4>${(d.hist || []).length ? `<ul class="list-plain">${d.hist.slice().reverse().map((h, i) => `<li><span class="mono muted" style="font-size:11.5px">${fmtTime(h.at)}</span><span>${esc(h.why || "")}</span><button class="btn sm ghost" data-act="draftRestore" data-i="${d.hist.length - 1 - i}">되돌리기</button></li>`).join("")}</ul>` : '<p class="muted" style="font-size:12px">아직 없어요.</p>'}<button class="btn sm" data-act="draftSnap">지금 판 저장</button></section>
+</aside>`;
+  return head + `<div class="dr"><section class="sheet pad lift stack"><input class="input title-in" data-bind="PC.${it.id}.draft.title" value="${esc(d.title || "")}" aria-label="꼭지 제목">${secs}
+  <div class="row"><button class="btn ${it.status === "done" ? "" : "primary"}" data-act="draftDone">${it.status === "done" ? "완성 표시 풀기" : "완성으로 표시"}</button><button class="btn" data-act="draftCopy">${I.copy}Markdown 복사</button><button class="btn" data-act="draftSave">${I.down}.md 저장</button></div></section>${side}</div>`;
+}
+function afterDraft() { $$("textarea[data-grow]").forEach(grow); }
+function grow(el) { el.style.height = "auto"; el.style.height = el.scrollHeight + 2 + "px"; }
+async function draftRun(ask) {
+  const it = issueById(S.ui.issue); if (!it) return;
+  const pc = ensurePiece(it.id);
+  S.ui.busy.draft = true; S.ui.err.draft = null; render();
+  try {
+    const r = await aiDraft(it, pc, ask);
+    let mine = [];
+    if (pc.draft && pc.draft.ai) {
+      /* remember what the author wrote, so a rewrite that keeps it still counts it as theirs */
+      const prevAi = new Set(); SECTIONS.forEach((s) => splitSent(pc.draft.ai.sections[s.id]).forEach((x) => prevAi.add(x)));
+      const own = new Set(pc.draft.mine || []);
+      SECTIONS.forEach((s) => splitSent(pc.draft.cur[s.id]).forEach((x) => { if (!prevAi.has(x) || own.has(x)) own.add(x); }));
+      mine = Array.from(own).slice(-400);
+    }
+    if (pc.draft) { pc.draft.hist = pc.draft.hist || []; pc.draft.hist.push({ at: nowISO(), why: ask ? "다시 쓰기 전: " + cut(ask, 30) : "새 초안 전", title: pc.draft.title, sections: clone(pc.draft.cur) }); if (pc.draft.hist.length > 12) pc.draft.hist = pc.draft.hist.slice(-12); }
+    pc.draft = { title: r.title, ai: { at: nowISO(), sections: r.sections }, cur: clone(r.sections), theory: r.theory, hist: (pc.draft && pc.draft.hist) || [], mine, at: nowISO() };
+    if (it.status !== "done") it.status = "draft";
+    S.ui.draftAsk = "";
+    markDirty();
+  } catch (e) { S.ui.err.draft = aiErrMsg(e); }
+  S.ui.busy.draft = false; render();
+}
+
+/* ============================================================ MY RECORD · 나의 기록
+   Scenes from the author's life, kept to the side. Claude reaches for them only when an opinion
+   cannot stand on its reasoning alone. */
+function viewRecords() {
+  const xs = S.SC.items.slice().sort((a, b) => String(a.when || "9999").localeCompare(String(b.when || "9999")));
+  const ed = S.ui.scEdit;
+  const card = (s) => {
+    const i = S.SC.items.indexOf(s);
+    if (ed === s.id) return `<li class="sc edit"><div class="row"><input class="input when" data-bind="SC.items.${i}.when" value="${esc(s.when || "")}" placeholder="때 (예: 2004 또는 대학 3학년)"><input class="input" data-bind="SC.items.${i}.title" value="${esc(s.title)}" placeholder="제목"></div><textarea class="input" rows="6" data-bind="SC.items.${i}.text">${esc(s.text)}</textarea><div class="row"><button class="btn sm primary" data-act="scDone">다 고침</button><button class="btn sm ghost" data-act="scDel" data-id="${s.id}">${I.trash}지우기</button></div></li>`;
+    const used = S.ISS.items.filter((x) => S.PC[x.id] && S.PC[x.id].iv.scenes.includes(s.id)).length;
+    return `<li class="sc"><div class="w mono">${esc(s.when || "때 미상")}</div><div><div class="t">${esc(s.title)}${used ? ` <span class="tag ai">근거로 쓰임 ${used}</span>` : ""}</div><div class="tx">${nl2br(s.text)}</div></div><button class="btn sm ghost" data-act="scEdit" data-id="${s.id}" aria-label="고치기">${I.edit}</button></li>`;
+  };
+  const at = S.AT;
+  const kinds = at ? Object.entries(at.items.reduce((m, x) => ((m[x.k] = (m[x.k] || 0) + 1), m), {})) : [];
+  return `<div class="page-head"><div><div class="eyebrow">Record · 한켠에 두는 기록</div><h1>나의 기록</h1><p class="lede">살면서 겪은 장면을 모아 둡니다. 인터뷰에서 의견이 논리만으로 부족할 때만 Claude가 여기서 근거를 찾아 제안해요.</p></div></div>
+<div class="stack">
+<section class="sheet pad stack">
+  <h3>장면 더하기</h3>
+  <div class="row"><input class="input when" id="scWhen" placeholder="때 (예: 2004)"><input class="input" id="scTitle" placeholder="제목 (예: 옆 아파트에 공부방을 차림)" style="flex:1"></div>
+  <textarea class="input" id="scText" rows="4" placeholder="무슨 일이 있었고, 그때 무엇을 따졌고, 어떻게 됐는지. 생각나는 만큼만."></textarea>
+  <div class="row"><button class="btn primary" data-act="scAdd">${I.plus}더하기</button><span class="muted" style="font-size:12px">나만 볼 수 있게 저장돼요. 개인적인 내용은 원고를 정리할 때 빼면 돼요.</span></div>
+</section>
+<section class="sheet pad"><h3 style="margin-bottom:8px">장면 <span class="mono muted">${xs.length}</span></h3>${xs.length ? `<ul class="list-plain scs">${xs.map(card).join("")}</ul>` : '<p class="empty">아직 없어요.</p>'}</section>
+<section class="sheet pad stack">
+  <h3>Atlas 기록 가져오기</h3>
+  <p class="muted">Atlas의 Pack 화면에서 '전체 JSON 저장'으로 받은 파일을 올리면, 생각 나무 메모·Records·기록·연표·딜레마 메모를 읽어 둡니다. Claude가 이슈를 제안할 때 참고해요. Atlas에는 아무것도 쓰지 않습니다.</p>
+  ${at ? `<p><b>${at.items.length}개</b> <span class="muted">· ${fmtDot(at.at)} 가져옴 · ${kinds.map(([k, n]) => esc(k) + " " + n).join(", ")}</span></p>` : ""}
+  <div class="row"><label class="btn">${I.up}${at ? "다시 가져오기" : "JSON 파일 올리기"}<input type="file" id="atlasFile" accept=".json,application/json" hidden></label>${at ? '<button class="btn ghost" data-act="atlasDel">가져온 기록 지우기</button>' : ""}</div>
+</section>
+</div>`;
+}
+/* Atlas "전체 JSON" (schema atlas.profile/4) → flat list of short texts */
+function atlasItems(j) {
+  const P = j && j.profile; if (!P) throw new Error("Atlas 전체 JSON 파일이 아니에요.");
+  const out = [], seen = new Set();
+  const add = (k, text, date) => { text = String(text || "").replace(/\s+/g, " ").trim(); if (text.length < 4 || seen.has(text)) return; seen.add(text); out.push({ k, text: text.slice(0, 400), date: date || null }); };
+  ((P.tree && P.tree.nodes) || []).forEach((n) => { if (n.memo && !n.ai) add("생각", n.label + ": " + n.memo); });
+  Object.entries((P.values && P.values.notes) || {}).forEach(([, v]) => add("딜레마", v));
+  Object.entries((P.ipip && P.ipip.notes) || {}).forEach(([, v]) => add("성격", v));
+  ((j.log && j.log.items) || []).forEach((x) => add("메모", x.text, x.date));
+  ((P.timeline && P.timeline.events) || []).forEach((e) => add("연표", (e.s || "") + " " + e.label + (e.note ? " — " + e.note : ""), e.s));
+  ((P.wants && P.wants.items) || []).forEach((w) => add("원하는 것", w.text + (w.why ? " (" + w.why + ")" : "")));
+  ((P.decisions && P.decisions.items) || []).forEach((d) => add("결정", [d.title, d.situation, d.why, d.result, d.learned].filter(Boolean).join(" / ")));
+  (P.ledger || []).forEach((e) => add("Records", (e.label ? e.label + ": " : "") + e.value, e.date));
+  /* keep the document well under the store limit */
+  let len = 0; const kept = [];
+  for (const x of out) { len += x.text.length * 3 + 40; if (len > 180 * 1024) break; kept.push(x); }
+  return kept;
+}
+
+/* ============================================================ shell, router, events, actions */
+const ROUTES = { home: viewHome, map: viewIssues, iv: viewInterview, draft: viewDraft, rec: viewRecords };
+const AFTER = { iv: afterInterview, draft: afterDraft };
+const NAV = [["home", I.home, "개요"], ["map", I.tree, "이슈 지도"], ["iv", I.chat, "인터뷰"], ["draft", I.edit, "원고"], ["rec", I.ledger, "나의 기록"]];
+
+function buildShell() {
+  const nav = (v, icon, label) => `<a href="#${v}" data-go="${v}">${icon}<span>${label}</span></a>`;
+  $("#app").innerHTML =
+    `<div class="app"><aside class="rail"><div class="brand"><div class="brand-mark">${I.logo}<div class="brand-name">책 쓰기</div></div></div>` +
+    `<nav class="nav" aria-label="주 메뉴">${NAV.map((n) => nav(...n)).join("")}</nav>` +
+    `<div class="rail-foot"><div class="save-state"><i></i><span>저장됨</span></div><div>모든 변경은 자동으로 저장돼요.</div><details class="diag"><summary>연결 상태</summary><div class="diag-body"></div></details></div></aside>` +
+    `<div class="main"><header class="topbar-m"><div class="brand-mark">${I.logo}<span class="brand-name">책 쓰기</span></div><span class="save-state"><i></i><span>저장됨</span></span></header><main class="page" id="page"></main></div>` +
+    `<nav class="tabbar" aria-label="하단 메뉴">${NAV.map(([v, ic, l]) => `<a href="#${v}" data-go="${v}" data-tab="${v}">${ic}${l}</a>`).join("")}</nav></div>`;
+  setSave(S.mode === "cloud" ? "idle" : S.mode === "local" ? "local" : "off");
+}
+function diagHTML() {
+  const d = S.diag, c = d.caps;
+  const yn = (v) => (v ? "연결됨" : "없음");
+  const row = (k, v) => "<div><b>" + esc(k) + "</b> " + esc(v) + "</div>";
+  const err = (e) => (e ? e.code + (e.msg ? " — " + e.msg : "") + " (" + e.at + ")" : "없음");
+  const perms = d.perms ? Object.keys(d.perms).map((k) => k + ":" + d.perms[k]).join(", ") : "알 수 없음";
+  return row("모드", S.mode) + (c ? row("저장소", yn(c.db)) + row("사용자", yn(c.user) + (S.uid ? " · id 있음" : " · id 없음") + (S.isOwner ? " · 소유자" : "")) + row("Claude", yn(c.sample) + (S.aiOff ? " · 꺼짐(" + S.aiOff + ")" : "")) : row("런타임", "없음")) +
+    row("권한", perms) + row("저장 성공", d.writes + "회" + (d.lastWrite ? " (마지막 " + d.lastWrite + ")" : "") + (S.saveState === "saving" ? " · 저장 중" : "")) + (S.aiLite ? row("AI 방식", "가벼운 방식(quick)") : "") + row("마지막 저장 오류", err(d.save)) + row("마지막 AI 오류", err(d.ai)) + (d.boot ? row("불러오기 오류", err(d.boot)) : "") + (d.js ? row("앱 오류", err(d.js)) : "");
+}
+function renderDiag() { const h = diagHTML(); $$(".diag-body").forEach((el) => { el.innerHTML = h; }); }
+let lastView = null;
+function render() {
+  const v = S.ui.view;
+  $$(".nav a[data-go]").forEach((a) => a.classList.toggle("on", a.dataset.go === v));
+  $$(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === v));
+  const page = $("#page"), y = window.scrollY;
+  page.innerHTML = ROUTES[v]();
+  if (lastView !== v) { window.scrollTo(0, 0); lastView = v; } else window.scrollTo(0, y);
+  if (AFTER[v]) AFTER[v]();
+  renderDiag();
+}
+/* #iv/<issue id> and #draft/<issue id> keep the open issue across reloads */
+function hashOf() { return S.ui.view + ((S.ui.view === "iv" || S.ui.view === "draft") && S.ui.issue ? "/" + S.ui.issue : ""); }
+function goView(v, issue) {
+  if (!ROUTES[v]) v = "home";
+  S.ui.view = v;
+  if (issue !== undefined) S.ui.issue = issue;
+  try { history.replaceState(null, "", "#" + hashOf()); } catch (e) { /* sandboxed */ }
+  render();
+}
+function readHash() {
+  const [v, id] = location.hash.replace("#", "").split("/");
+  if (!ROUTES[v]) return false;
+  S.ui.view = v; if (id) S.ui.issue = id;
+  return true;
+}
+window.addEventListener("hashchange", () => { if (location.hash.replace("#", "") !== hashOf() && readHash()) render(); });
+
+function setPath(path, v) {
+  const parts = path.split("."); let o = S;
+  for (let i = 0; i < parts.length - 1; i++) { const k = parts[i]; if (o[k] == null) o[k] = /^\d+$/.test(parts[i + 1]) ? [] : {}; o = o[k]; }
+  o[parts[parts.length - 1]] = v;
+}
+async function saveFile(name, data) {
+  try { await Backend.download(name, data); toast("저장했어요: " + name); }
+  catch (e) {
+    if (e && e.code === "declined") return;
+    toast(e && e.code === "unavailable" ? "이 화면에서는 파일 저장을 쓸 수 없어요." : "파일을 저장하지 못했어요 (" + ((e && e.code) || "오류") + ").", 4200);
+  }
+}
+const stamp = () => localDate().replace(/-/g, "");
+
+/* ---------------- events ---------------- */
+document.addEventListener("click", (e) => {
+  const go = e.target.closest("[data-go]");
+  if (go) { e.preventDefault(); goView(go.dataset.go); return; }
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const fn = ACT[a.dataset.act]; if (!fn) return;
+  if (a.tagName === "A" || a.tagName === "BUTTON") e.preventDefault();
+  fn(a, e);
+});
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (el.id === "ivInput") { S.ui.ivDraft = el.value; return; }
+  if (el.id === "draftAsk") { S.ui.draftAsk = el.value; return; }
+  if (!el.dataset || !el.dataset.bind) return;
+  setPath(el.dataset.bind, el.value);
+  if (el.dataset.grow) grow(el);
+  markDirty();
+});
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.id === "atlasFile" && el.files && el.files[0]) { ACT.atlasImport(el.files[0]); el.value = ""; }
+});
+document.addEventListener("keydown", (e) => {
+  const el = e.target; if (!el || e.isComposing || e.keyCode === 229) return;
+  if (el.id === "ivInput" && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ACT.ivSend(); return; }
+  if (el.id === "newQ" && e.key === "Enter") { e.preventDefault(); ACT.issueAdd(); }
+});
+
+const curIssue = () => issueById(S.ui.issue);
+const ACT = {
+  go: (a) => goView(a.dataset.view, a.dataset.clear ? null : undefined),
+  area: (a) => { S.ui.area = a.dataset.v; render(); },
+
+  /* ---- issue map ---- */
+  issueAdd: () => {
+    const q = ($("#newQ") || {}).value || "", area = ($("#newArea") || {}).value || "meaning";
+    if (!q.trim()) { toast("질문을 적어 주세요."); return; }
+    addIssue(area, q); markDirty(); render(); toast("질문을 더했어요.");
+  },
+  issueDel: (a) => {
+    const it = issueById(a.dataset.id); if (!it) return;
+    const pc = S.PC[it.id], talked = pc && (pc.iv.turns.length || pc.draft);
+    if (talked && !confirm("이 이슈의 인터뷰와 원고도 함께 지워져요. 지울까요?")) return;
+    S.ISS.items = S.ISS.items.filter((x) => x !== it);
+    S.B.meta.rejected = (S.B.meta.rejected || []).concat([{ q: it.q, area: it.area }]).slice(-80);
+    dropPiece(it.id);
+    if (S.ui.issue === it.id) S.ui.issue = null;
+    markDirty(); render();
+  },
+  issueRestore: (a) => {
+    const r = S.B.meta.rejected.splice(+a.dataset.i, 1)[0]; if (!r) return;
+    addIssue(r.area || "meaning", r.q || r); markDirty(); render();
+  },
+  issueSuggest: async () => {
+    if (S.ui.busy.sug) return;
+    const area = S.ui.area !== "all" ? S.ui.area : null;
+    S.ui.busy.sug = true; S.ui.err.sug = null; render();
+    try {
+      const xs = await aiSuggestIssues(area);
+      const have = new Set(S.ISS.items.map((x) => x.q).concat((S.B.meta.rejected || []).map((r) => r.q || r)));
+      let n = 0;
+      xs.forEach((x) => { const q = String(x.q).trim(); if (have.has(q)) return; have.add(q); addIssue(area || x.area, q, { ai: true, why: String(x.why || "") }); n++; });
+      S.B.meta.suggestedAt = nowISO();
+      markDirty(); toast(n ? "질문 " + n + "개를 더했어요." : "새로 더할 질문이 없었어요.");
+    } catch (e) { S.ui.err.sug = aiErrMsg(e); }
+    S.ui.busy.sug = false; render();
+  },
+  openIv: (a) => { S.ui.ivDraft = ""; goView("iv", a.dataset.id); },
+  openDraft: (a) => goView("draft", a.dataset.id),
+
+  /* ---- interview ---- */
+  ivStart: () => ivRun(true),
+  ivSend: () => {
+    const inp = $("#ivInput"), it = curIssue();
+    if (!inp || inp.disabled || !it) return;
+    const text = inp.value.trim(); if (!text) return;
+    const iv = ensurePiece(it.id).iv;
+    iv.turns.push({ role: "user", content: text, at: nowISO() });
+    iv.pend = false; S.ui.ivDraft = ""; markDirty();
+    ivRun(false);
+  },
+  ivRetry: () => { const it = curIssue(); if (!it) return; const t = ensurePiece(it.id).iv.turns; ivRun(!t.length); },
+  ivStay: () => { const it = curIssue(); if (!it) return; const iv = ensurePiece(it.id).iv; iv.pend = false; if (iv.n >= IV_CAP) iv.n = IV_CAP - 4; markDirty(); render(); },
+  ivClear: () => {
+    const it = curIssue(); if (!it || !confirm("이 이슈의 대화를 비울까요? 채운 칸과 인용은 남아요.")) return;
+    const iv = ensurePiece(it.id).iv; iv.turns = []; iv.n = 0; iv.pend = false; markDirty(); render();
+  },
+  quoteDel: (a) => { const it = curIssue(); if (!it) return; S.PC[it.id].iv.quotes.splice(+a.dataset.i, 1); markDirty(); render(); },
+  sceneAttach: (a) => { const it = curIssue(); if (!it) return; const iv = S.PC[it.id].iv; if (!iv.scenes.includes(a.dataset.id)) iv.scenes.push(a.dataset.id); markDirty(); render(); },
+  sceneNo: (a) => { const it = curIssue(); if (!it) return; const t = S.PC[it.id].iv.turns[+a.dataset.t]; if (t) (t.no = t.no || []).push(a.dataset.id); markDirty(); render(); },
+  sceneDetach: (a) => { const it = curIssue(); if (!it) return; const iv = S.PC[it.id].iv; iv.scenes = iv.scenes.filter((x) => x !== a.dataset.id); markDirty(); render(); },
+
+  /* ---- draft ---- */
+  draftWrite: (a) => {
+    if (S.ui.busy.draft) return;
+    const ask = a.dataset.ask ? String(S.ui.draftAsk || "").trim() : "";
+    if (a.dataset.ask && !ask) { toast("어떻게 고칠지 적어 주세요."); return; }
+    draftRun(ask);
+  },
+  draftSnap: () => {
+    const it = curIssue(); if (!it) return; const d = S.PC[it.id].draft; if (!d) return;
+    d.hist = (d.hist || []).concat([{ at: nowISO(), why: "직접 저장", title: d.title, sections: clone(d.cur) }]).slice(-12);
+    markDirty(); render(); toast("지금 판을 저장했어요.");
+  },
+  draftRestore: (a) => {
+    const it = curIssue(); if (!it) return; const d = S.PC[it.id].draft, h = d && d.hist[+a.dataset.i]; if (!h) return;
+    if (!confirm("이 판으로 되돌릴까요? 지금 원고는 판 기록에 남겨요.")) return;
+    d.hist.push({ at: nowISO(), why: "되돌리기 전", title: d.title, sections: clone(d.cur) });
+    d.cur = clone(h.sections); if (h.title) d.title = h.title;
+    d.hist = d.hist.slice(-12); markDirty(); render();
+  },
+  draftDone: () => { const it = curIssue(); if (!it) return; it.status = it.status === "done" ? "draft" : "done"; markDirty(); render(); },
+  draftCopy: async () => {
+    const it = curIssue(); if (!it) return; const md = pieceMD(it, S.PC[it.id]);
+    try { await navigator.clipboard.writeText(md); toast("Markdown을 복사했어요."); } catch (e) { toast("복사하지 못했어요. .md 저장을 써 주세요."); }
+  },
+  draftSave: () => { const it = curIssue(); if (!it) return; saveFile("book-" + stamp() + "-" + it.id + ".md", pieceMD(it, S.PC[it.id])); },
+
+  /* ---- my record ---- */
+  scAdd: () => {
+    const when = ($("#scWhen") || {}).value || "", title = ($("#scTitle") || {}).value || "", text = ($("#scText") || {}).value || "";
+    if (!title.trim() && !text.trim()) { toast("제목이나 내용을 적어 주세요."); return; }
+    S.SC.items.push({ id: uid("s"), when: when.trim(), title: title.trim() || cut(text, 30), text: text.trim(), src: "me", at: nowISO() });
+    markDirty(); render(); toast("장면을 더했어요.");
+  },
+  scEdit: (a) => { S.ui.scEdit = a.dataset.id; render(); },
+  scDone: () => { S.ui.scEdit = null; render(); },
+  scDel: (a) => {
+    if (!confirm("이 장면을 지울까요?")) return;
+    S.SC.items = S.SC.items.filter((x) => x.id !== a.dataset.id);
+    for (const id in S.PC) S.PC[id].iv.scenes = S.PC[id].iv.scenes.filter((x) => x !== a.dataset.id);
+    S.ui.scEdit = null; markDirty(); render();
+  },
+  atlasImport: async (file) => {
+    try {
+      const j = JSON.parse(await file.text());
+      const items = atlasItems(j);
+      if (!items.length) { toast("가져올 기록이 없었어요."); return; }
+      S.AT = { at: nowISO(), schema: String(j.schema || ""), items };
+      markDirty(); render(); toast("Atlas 기록 " + items.length + "개를 가져왔어요.");
+    } catch (e) { toast(e && e.message && !(e instanceof SyntaxError) ? e.message : "JSON 파일을 읽지 못했어요.", 4200); }
+  },
+  atlasDel: () => { if (!confirm("가져온 Atlas 기록을 지울까요? Atlas 원본은 그대로예요.")) return; S.AT = null; dropDoc("b_atlas"); markDirty(); render(); },
+};
+
+(async function start() {
+  try { await boot(); } catch (e) { noteErr("boot", e); if (!S.B) { S.B = blankBook(); } }
+  readHash();
+  buildShell();
+  render();
+})();
+
+})();

@@ -7,3 +7,7 @@ test/shots/
 test/index.html
 
 __pycache__/
+
+# book app test outputs
+book/test/shots/
+book/test/index.html
