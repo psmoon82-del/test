@@ -48,7 +48,7 @@ const SECTIONS = [
   { id: "process", name: "생각의 과정" },
   { id: "scene", name: "장면", opt: true },
   { id: "limits", name: "한계와 조건" },
-  { id: "link", name: "연결" },
+  { id: "link", name: "검증과 반론" }, /* id kept for saved drafts; was "연결" (theory citations) until 2026-09 */
   { id: "reader", name: "독자에게" },
 ];
 
