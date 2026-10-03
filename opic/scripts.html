@@ -91,10 +91,10 @@ var KIND_FALLBACK={
   role:"[{t}] 예상 밖 문제가 생겼던 상황이 있나요? 어떻게 해결했나요?"
 };
 var TOPICS=[
- {id:"intro",name:"자기소개",need:["desc","past","change"]},
- {id:"home",name:"집"},
- {id:"work",name:"직장",need:["desc","habit","past","change","role"]},
- {id:"english",name:"영어 경험"},
+ {id:"intro",name:"자기소개",core:true,need:["desc","past","change"]},
+ {id:"home",name:"집",core:true},
+ {id:"work",name:"직장",core:true,need:["desc","habit","past","change","role"]},
+ {id:"english",name:"영어 경험",core:true},
  {id:"music",name:"음악"},
  {id:"media",name:"영화·콘텐츠"},
  {id:"family",name:"가족"},
@@ -105,9 +105,16 @@ var TOPICS=[
  {id:"sports",name:"운동"},
  {id:"travel",name:"여행"},
  {id:"routine",name:"일상·출퇴근"},
- {id:"roleplay",name:"롤플레이 상황",need:["role"]}
+ {id:"roleplay",name:"롤플레이 상황",core:true,need:["role"]}
 ];
 var DEF_NEED=["desc","habit","past","change"];
+var SV_CATS=[["leisure","여가활동"],["hobby","취미·관심사"],["sport","운동"],["trip","휴가·출장"]];
+var SURVEY=[
+ ["leisure","movie","영화보기"],["leisure","tv","TV 보기"],["leisure","cafe","카페·커피숍 가기"],["leisure","park","공원 가기"],["leisure","concert","콘서트 보기"],["leisure","game","게임하기"],["leisure","shop","쇼핑하기"],["leisure","news","뉴스 보기"],
+ ["hobby","music","음악 감상하기"],["hobby","stock","주식 투자하기"],["hobby","cook","요리하기"],["hobby","photo","사진 찍기"],["hobby","write","글쓰기"],["hobby","draw","그림 그리기"],["hobby","read","독서"],
+ ["sport","walk","걷기"],["sport","jog","조깅"],["sport","gym","헬스"],["sport","bike","자전거"],["sport","swim","수영"],["sport","hike","하이킹·트레킹"],["sport","basket","농구"],["sport","none","운동을 하지 않음"],
+ ["trip","homevac","집에서 보내는 휴가"],["trip","domtrip","국내 여행"],["trip","abtrip","해외 여행"],["trip","biz","국내 출장"],["trip","abbiz","해외 출장"]
+].map(function(a){return {cat:a[0],id:a[1],name:a[2]}});
 
 /* ---------- 호스트 연결 (저장·AI·파일) ---------- */
 var B={kind:"local",uid:"local",db:null,sample:null,dl:null};
@@ -142,17 +149,34 @@ function persist(name){
 function paintStatus(){var el=$("#status");if(el){el.textContent=(B.kind==="cloud"?"계정에 저장":"이 브라우저에만 저장")+(S.save?" · "+S.save:"");el.className="status"+(S.saveBad?" bad":"")}}
 function meta(){var m=S.docs.meta;if(!m)m=S.docs.meta={focus:[],custom:[],about:""};if(!m.focus)m.focus=[];if(!m.custom)m.custom=[];return m}
 function tdoc(id){var k="st_"+id;if(!S.docs[k])S.docs[k]={stories:[],frames:[]};var d=S.docs[k];if(!d.stories)d.stories=[];if(!d.frames)d.frames=[];return d}
-function topics(){return TOPICS.concat(meta().custom.map(function(c){return {id:c.id,name:c.name,custom:true}}))}
+function svSel(){var v=meta().survey;return v&&v.items?v.items:[]}
+function svTopics(){var sel=svSel();return SURVEY.filter(function(i){return sel.indexOf(i.id)>=0}).map(function(i){return {id:"sv_"+i.id,name:i.name,sv:true,cat:i.cat}})}
+function topics(){
+  var core=TOPICS.filter(function(t){return t.core}),rest=TOPICS.filter(function(t){return !t.core});
+  return svTopics().concat(core,meta().custom.map(function(c){return {id:c.id,name:c.name,custom:true}}),rest);
+}
+function inScope(t){return !!(t.sv||t.core||t.custom)}
+/* 이 주제에서 쓸 수 있는 이야기: 자기 것 + 다른 주제에서 "also"로 연결해 둔 것 */
+function mats(t){
+  var out=tdoc(t.id).stories.map(function(s){return {s:s,from:null}});
+  topics().forEach(function(o){if(o.id===t.id)return;tdoc(o.id).stories.forEach(function(s){if(s.also&&s.also.indexOf(t.id)>=0)out.push({s:s,from:o})})});
+  return out;
+}
+function findStory(sid){
+  var ks=Object.keys(S.docs).filter(function(k){return k.indexOf("st_")===0});
+  for(var i=0;i<ks.length;i++){var st=(S.docs[ks[i]].stories||[]).filter(function(x){return x.id===sid})[0];if(st)return {s:st,tid:ks[i].slice(3)}}
+  return null;
+}
 function topicBy(id){return topics().filter(function(t){return t.id===id})[0]}
 function need(t){return t.need||DEF_NEED}
-function kindState(t,k){var d=tdoc(t.id);if(d.frames.some(function(f){return f.kind===k}))return 2;if(d.stories.some(function(s){return s.kind===k}))return 1;return 0}
+function kindState(t,k){var d=tdoc(t.id);if(d.frames.some(function(f){return f.kind===k}))return 2;if(mats(t).some(function(m){return m.s.kind===k}))return 1;return 0}
 function fill(t){var n=need(t);return n.reduce(function(a,k){return a+kindState(t,k)/2},0)/n.length}
 function isFocus(id){return meta().focus.indexOf(id)>=0}
 
 /* 다음에 채울 것: 시험 주제로 고른 것 먼저, 그다음 채움이 낮은 순 */
 function pickNext(){
-  var list=topics().map(function(t,i){return {t:t,i:i,f:fill(t)}}).filter(function(x){return x.f<1});
-  list.sort(function(a,b){var fa=isFocus(a.t.id)?0:1,fb=isFocus(b.t.id)?0:1;return fa-fb||a.f-b.f||a.i-b.i});
+  var list=topics().filter(inScope).map(function(t,i){return {t:t,i:i,f:fill(t)}}).filter(function(x){return x.f<1});
+  list.sort(function(a,b){var ga=a.t.sv?0:1,gb=b.t.sv?0:1;return ga-gb||a.f-b.f||a.i-b.i});
   if(!list.length)return null;
   var t=list[0].t,kinds=need(t);
   var k=kinds.filter(function(k){return kindState(t,k)===0})[0];
@@ -174,8 +198,7 @@ function ai(prompt,tier){
   return B.sample.json(prompt,{modelTier:tier||"default",cache:false});
 }
 function storyLines(t,kind,max){
-  var d=tdoc(t.id);
-  return d.stories.filter(function(s){return !kind||s.kind===kind}).slice(0,max||6).map(function(s){return "- "+(s.title?s.title+": ":"")+cut(s.text,500)}).join("\n");
+  return mats(t).map(function(m){return m.s}).filter(function(s){return !kind||s.kind===kind}).slice(0,max||6).map(function(s){return "- "+(s.title?s.title+": ":"")+cut(s.text,500)}).join("\n");
 }
 function askQuestion(t,kind){
   var done=tdoc(t.id).stories.slice(0,8).map(function(s){return "- "+(s.title||cut(s.text,50))}).join("\n")||"(아직 없음)";
@@ -189,7 +212,7 @@ function askQuestion(t,kind){
 }
 function buildFrame(t,kind,storyIds){
   var d=tdoc(t.id);
-  var ss=d.stories.filter(function(s){return storyIds?storyIds.indexOf(s.id)>=0:s.kind===kind});
+  var ss=mats(t).map(function(m){return m.s}).filter(function(s){return storyIds?storyIds.indexOf(s.id)>=0:s.kind===kind});
   if(!ss.length)return Promise.reject({code:"no_story",message:"먼저 이 유형의 이야기를 하나 적어 주세요."});
   var mat=ss.slice(0,3).map(function(s){return "- "+(s.title?s.title+": ":"")+cut(s.text,1500)}).join("\n");
   var rp=kind==="role",lv=meta().level==="IH"?"IH":"AL";
@@ -218,7 +241,7 @@ function buildFrame(t,kind,storyIds){
 function kindChips(t){
   return need(t).map(function(k){var s=kindState(t,k);return '<span class="chip s'+s+'" title="'+(s===2?"답변 틀 있음":s===1?"이야기만 있음":"비어 있음")+'">'+KIND[k]+(s===2?" ✓":s===1?" ·":"")+'</span>'}).join("");
 }
-function counts(){var st=0,fr=0,tot=0,ts=topics();ts.forEach(function(t){var d=tdoc(t.id);st+=d.stories.length;fr+=d.frames.length;tot+=fill(t)});return {st:st,fr:fr,pct:ts.length?Math.round(tot/ts.length*100):0}}
+function counts(){var st=0,fr=0,tot=0,ts=topics().filter(inScope);topics().forEach(function(t){var d=tdoc(t.id);st+=d.stories.length;fr+=d.frames.length});ts.forEach(function(t){tot+=fill(t)});return {st:st,fr:fr,pct:ts.length?Math.round(tot/ts.length*100):0}}
 function kindOpts(sel,list){return (list||KINDS.map(function(k){return k[0]})).map(function(k){return '<option value="'+k+'"'+(k===sel?" selected":"")+'>'+KIND[k]+'</option>'}).join("")}
 function msgHtml(){return S.msg?'<div class="msg'+(S.msgBad?" bad":"")+'" role="status">'+esc(S.msg)+'</div>':""}
 
@@ -240,20 +263,37 @@ function nextCard(){
   }
   return h+'</section>';
 }
+function rowFor(t){
+  var d=tdoc(t.id),f=Math.round(fill(t)*100);
+  return '<div class="topic" tabindex="0" role="button" data-act="go" data-id="'+t.id+'">'
+   +'<div class="row between"><h3>'+esc(t.name)+'</h3><span class="mute small">이야기 '+mats(t).length+' · 틀 '+d.frames.length+'</span></div>'
+   +'<div class="bar"><i style="width:'+f+'%"></i></div><div class="chips">'+kindChips(t)+'</div></div>';
+}
+function surveyCard(){
+  var v=meta().survey||{},sel=svSel();
+  var h='<section class="card"><div class="row between"><h2>Survey</h2><button class="link" data-act="svEdit">'+(S.svEdit?"닫기":"고르기")+'</button></div>'
+   +'<p class="small mute">일: '+esc(v.job||"회사 근무")+' · 학생: '+esc(v.student||"아니오")+' · 거주: '+esc(v.home||"가족과 함께 아파트")+'</p>';
+  h+=sel.length?'<div class="chips">'+SURVEY.filter(function(i){return sel.indexOf(i.id)>=0}).map(function(i){return '<span class="chip s2">'+esc(i.name)+'</span>'}).join("")+'</div>'
+    :'<p class="small mute">아직 고르지 않았습니다. 고르면 그 주제를 먼저 채웁니다.</p>';
+  if(S.svEdit){
+    SV_CATS.forEach(function(c){
+      h+='<h3>'+c[1]+'</h3><div class="row">'+SURVEY.filter(function(i){return i.cat===c[0]}).map(function(i){return '<label class="chk"><input type="checkbox" data-sv="'+i.id+'"'+(sel.indexOf(i.id)>=0?" checked":"")+'>'+esc(i.name)+'</label>'}).join("")+'</div>';
+    });
+    h+='<p class="small mute">항목은 한국 OPIc 설문을 기준으로 적었습니다. 실제 시험 화면과 다를 수 있고 최소 선택 수는 확인하지 못했습니다. 한 이야기를 여러 주제에 쓸 수 있는 항목을 고르세요.</p>';
+  }
+  return h+'</section>';
+}
 function home(){
-  var c=counts();
+  var c=counts(),ts=topics();
+  var sv=ts.filter(function(t){return t.sv}),cm=ts.filter(function(t){return !t.sv&&inScope(t)}),st=ts.filter(function(t){return !inScope(t)});
   var h='<div class="head"><h1>OPIc 스크립트</h1><span class="status" id="status"></span></div>'
    +'<p class="mute">이야기 재료를 모으고 영어 답변 틀로 쌓습니다. 시험관 역할은 Claude와의 대화에서 합니다.</p>'
    +msgHtml()+nextCard()
-   +'<section class="card"><h2>지금까지</h2><div class="nums"><span><b>'+c.st+'</b>이야기</span><span><b>'+c.fr+'</b>답변 틀</span><span><b>'+c.pct+'%</b>채움</span></div></section>'
-   +'<div class="row between"><h2>주제</h2><span class="mute small">★ 시험 주제로 고르면 먼저 채웁니다</span></div>';
-  topics().forEach(function(t){
-    var d=tdoc(t.id),f=Math.round(fill(t)*100);
-    h+='<div class="topic" tabindex="0" role="button" data-act="go" data-id="'+t.id+'">'
-     +'<div class="row between"><h3>'+esc(t.name)+'</h3><span class="row"><span class="mute small">이야기 '+d.stories.length+' · 틀 '+d.frames.length+'</span>'
-     +'<button class="star'+(isFocus(t.id)?" on":"")+'" data-act="focus" data-id="'+t.id+'" aria-label="시험 주제로 고르기">'+(isFocus(t.id)?"★":"☆")+'</button></span></div>'
-     +'<div class="bar"><i style="width:'+f+'%"></i></div><div class="chips">'+kindChips(t)+'</div></div>';
-  });
+   +'<section class="card"><h2>지금까지</h2><div class="nums"><span><b>'+c.st+'</b>이야기</span><span><b>'+c.fr+'</b>답변 틀</span><span><b>'+c.pct+'%</b>Survey·공통 채움</span></div></section>'
+   +surveyCard();
+  if(sv.length)h+='<h2>Survey 주제</h2>'+sv.map(rowFor).join("");
+  h+='<h2>공통 주제</h2><p class="mute small">자기소개, 직장, 집, 영어 경험, 롤플레이는 어떤 Survey에서도 나옵니다.</p>'+cm.map(rowFor).join("");
+  h+='<h2>재료 창고</h2><p class="mute small">이야기를 쌓아 두는 곳입니다. 각 이야기에서 "다른 주제에도 쓰기"로 Survey 주제에 연결하면 그쪽 답변 틀에 쓰입니다.</p>'+st.map(rowFor).join("");
   h+='<section class="card"><h3>주제 추가</h3><div class="row"><input type="text" id="new-topic" class="grow" placeholder="예: 쇼핑" data-bind="newTopic"><button class="ghost" data-act="topicAdd">추가</button></div></section>'
    +'<section class="card"><h3>내보내기</h3><div class="row"><label class="chk"><input type="checkbox" data-bind="exp.stories"'+(S.exp.stories?" checked":"")+'>한국어 이야기 재료 포함</label>'
    +'<label class="chk"><input type="checkbox" data-bind="exp.sens"'+(S.exp.sens?" checked":"")+'>개인적·민감 표시 항목 포함</label></div>'
@@ -276,9 +316,22 @@ function storyHtml(t,s){
      +'<button class="ghost" data-act="frameFrom" data-id="'+s.id+'"'+(S.busy?" disabled":"")+'>'+(S.busy==="f"+s.id?"만드는 중…":"영어 틀 만들기")+'</button>'
      +'<button class="link" data-act="storyEdit" data-id="'+s.id+'">편집</button>'
      +'<button class="link" data-act="storySens" data-id="'+s.id+'">'+(s.sens?"개인적 표시 해제":"개인적 표시")+'</button>'
-     +'<button class="link danger" data-act="storyDel" data-id="'+s.id+'">삭제</button></div>';
+     +'<button class="link danger" data-act="storyDel" data-id="'+s.id+'">삭제</button></div>'
+     +reuseHtml(t,s);
   }
   return h+'</div>';
+}
+function reuseHtml(t,s){
+  var ts=topics().filter(function(o){return inScope(o)&&o.id!==t.id});
+  if(!ts.length)return "";
+  return '<div class="row"><span class="mute small">다른 주제에도 쓰기</span><span class="chips">'+ts.map(function(o){var on=(s.also||[]).indexOf(o.id)>=0;return '<button class="chip'+(on?" s2":"")+'" style="background:'+(on?"":"transparent")+';cursor:pointer" data-act="alsoToggle" data-id="'+s.id+'" data-t="'+o.id+'" aria-pressed="'+on+'">'+esc(o.name)+'</button>'}).join("")+'</span></div>';
+}
+function linkedHtml(t,m){
+  var s=m.s;
+  return '<div class="card"><div class="row"><span class="pill">'+KIND[s.kind]+'</span><span class="pill">'+esc(m.from.name)+'에서</span>'+(s.sens?'<span class="pill sens">개인적</span>':"")+'<h3>'+esc(s.title||"")+'</h3></div>'
+   +'<p class="small" style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(cut(s.text,400))+'</p>'
+   +'<div class="row"><button class="ghost" data-act="frameFrom" data-id="'+s.id+'"'+(S.busy?" disabled":"")+'>'+(S.busy==="f"+s.id?"만드는 중…":"영어 틀 만들기")+'</button>'
+   +'<button class="link" data-act="alsoToggle" data-id="'+s.id+'" data-t="'+t.id+'">연결 해제</button></div></div>';
 }
 function frameHtml(t,f){
   var ed=S.edit==="f"+f.id;
@@ -294,7 +347,7 @@ function topicView(id){
   var t=topicBy(id);if(!t){S.view="home";return home()}
   var d=tdoc(id),b=S.busy;
   var h='<div class="head"><div class="row"><button class="ghost" data-act="go" data-id="home">← 목록</button><h1>'+esc(t.name)+'</h1></div><span class="status" id="status"></span></div>'
-   +'<div class="row between"><div class="chips">'+kindChips(t)+'</div><button class="star'+(isFocus(id)?" on":"")+'" data-act="focus" data-id="'+id+'">'+(isFocus(id)?"★ 시험 주제":"☆ 시험 주제로")+'</button></div>'
+   +'<div class="chips">'+kindChips(t)+'</div>'
    +msgHtml()
    +'<section class="card"><h2>이야기 더하기</h2>'
    +'<div class="row"><select data-bind="form.kind" aria-label="유형">'+kindOpts(S.form.kind,need(t).concat(KINDS.map(function(k){return k[0]}).filter(function(k){return need(t).indexOf(k)<0})))+'</select>'
@@ -305,8 +358,9 @@ function topicView(id){
    +'<div class="row"><label class="chk"><input type="checkbox" data-bind="form.sens"'+(S.form.sens?" checked":"")+'>개인적·민감</label><button data-act="storyAdd">저장</button></div></section>'
    +'<h2>이야기 '+d.stories.length+'</h2>'
    +(d.stories.length?d.stories.map(function(s){return storyHtml(t,s)}).join(""):'<p class="mute small">아직 없습니다. 위에서 질문을 받아 하나 적어 보세요.</p>')
+   +(mats(t).some(function(m){return m.from})?'<h2>다른 주제에서 가져온 이야기 '+mats(t).filter(function(m){return m.from}).length+'</h2>'+mats(t).filter(function(m){return m.from}).map(function(m){return linkedHtml(t,m)}).join(""):"")
    +'<div class="row between"><h2>답변 틀 '+d.frames.length+'</h2><span class="row">'
-   +KINDS.filter(function(k){return d.stories.some(function(s){return s.kind===k[0]})}).map(function(k){return '<button class="ghost" data-act="frameKind" data-id="'+k[0]+'"'+(b?" disabled":"")+'>'+(b==="k"+k[0]?"만드는 중…":KIND[k[0]]+" 틀")+'</button>'}).join("")+'</span></div>'
+   +KINDS.filter(function(k){return mats(t).some(function(m){return m.s.kind===k[0]})}).map(function(k){return '<button class="ghost" data-act="frameKind" data-id="'+k[0]+'"'+(b?" disabled":"")+'>'+(b==="k"+k[0]?"만드는 중…":KIND[k[0]]+" 틀")+'</button>'}).join("")+'</span></div>'
    +(d.frames.length?d.frames.map(function(f){return frameHtml(t,f)}).join(""):'<p class="mute small">이야기를 저장한 뒤 "영어 틀 만들기"를 누르면 여기에 쌓입니다.</p>');
   return h;
 }
@@ -353,7 +407,6 @@ function mdExport(){
 }
 var ACT={
   go:function(el){S.view=el.dataset.id;note("");S.edit="";location.hash=S.view==="home"?"":S.view;render();window.scrollTo(0,0)},
-  focus:function(el,ev){ev.stopPropagation();var m=meta(),id=el.dataset.id,i=m.focus.indexOf(id);if(i>=0)m.focus.splice(i,1);else m.focus.push(id);persist("meta");render()},
   nextAsk:function(){var n=pickNext();if(!n)return;run("ask",function(){return askQuestion(n.t,n.kind).then(function(q){S.draft={topic:n.t.id,kind:n.kind,q:q,text:S.draft.text||""}})})},
   nextSave:function(){
     var n=pickNext();if(!n)return;var tx=(S.draft.text||"").trim();
@@ -372,7 +425,9 @@ var ACT={
   storySave:function(el){var s=storyOf(S.view,el.dataset.id);s.title=S.editS.title.trim();s.text=S.editS.text.trim();s.up=new Date().toISOString();S.edit="";persist("st_"+S.view);render()},
   storySens:function(el){var s=storyOf(S.view,el.dataset.id);s.sens=!s.sens;persist("st_"+S.view);render()},
   storyDel:function(el){var d=tdoc(S.view);d.stories=d.stories.filter(function(s){return s.id!==el.dataset.id});persist("st_"+S.view);render()},
-  frameFrom:function(el){var t=topicBy(S.view),s=storyOf(t.id,el.dataset.id);run("f"+s.id,function(){return buildFrame(t,s.kind,[s.id])})},
+  frameFrom:function(el){var t=topicBy(S.view),r=findStory(el.dataset.id);if(!r)return;var s=r.s;run("f"+s.id,function(){return buildFrame(t,s.kind,[s.id])})},
+  alsoToggle:function(el){var r=findStory(el.dataset.id);if(!r)return;var s=r.s,tid=el.dataset.t;s.also=s.also||[];var i=s.also.indexOf(tid);if(i>=0)s.also.splice(i,1);else s.also.push(tid);persist("st_"+r.tid);render()},
+  svEdit:function(){S.svEdit=!S.svEdit;render()},
   frameKind:function(el){var t=topicBy(S.view),k=el.dataset.id;run("k"+k,function(){return buildFrame(t,k)})},
   frameDel:function(el){var d=tdoc(S.view);d.frames=d.frames.filter(function(f){return f.id!==el.dataset.id});persist("st_"+S.view);render()},
   frameEdit:function(el){var id="f"+el.dataset.id;if(S.edit===id){S.edit="";persist("st_"+S.view)}else S.edit=id;render()},
@@ -403,6 +458,7 @@ document.addEventListener("input",function(ev){
 });
 document.addEventListener("change",function(ev){
   var el=ev.target;
+  if(el.dataset&&el.dataset.sv){var v=meta().survey||(meta().survey={job:"회사 근무",student:"아니오",home:"가족과 함께 아파트",items:[]});if(!v.items)v.items=[];var i=v.items.indexOf(el.dataset.sv);if(el.checked&&i<0)v.items.push(el.dataset.sv);if(!el.checked&&i>=0)v.items.splice(i,1);persist("meta");render();return}
   if(el.dataset&&el.dataset.bind==="about"){persist("meta");return}
   if(el.dataset&&el.dataset.bind==="level"){meta().level=el.value;persist("meta");return}
   if(el.dataset&&el.dataset.bind&&el.dataset.bind.indexOf("exp.")===0){setPath(el.dataset.bind,el.checked);return}
