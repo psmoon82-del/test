@@ -192,20 +192,24 @@ function buildFrame(t,kind,storyIds){
   var ss=d.stories.filter(function(s){return storyIds?storyIds.indexOf(s.id)>=0:s.kind===kind});
   if(!ss.length)return Promise.reject({code:"no_story",message:"먼저 이 유형의 이야기를 하나 적어 주세요."});
   var mat=ss.slice(0,3).map(function(s){return "- "+(s.title?s.title+": ":"")+cut(s.text,1500)}).join("\n");
-  var rp=kind==="role";
-  var p="OPIc(ACTFL) 답변 틀을 만드세요. 목표 등급은 IH(Intermediate High)입니다.\n"
+  var rp=kind==="role",lv=meta().level==="IH"?"IH":"AL";
+  var LV={
+   IH:{name:"IH(Intermediate High)",len:"120~170단어",voc:"어려운 어휘는 피하고 답변자가 실제로 입에 올릴 만한 수준(B1~B2)으로 쓴다.",skill:"문장을 넘어 문단으로 이어 말하고 과거·현재·미래를 오간다."},
+   AL:{name:"AL(Advanced Low)",len:"170~230단어",voc:"어휘는 B2~C1이되 말로 하기 어려운 단어는 피하고, 일상 관용 표현을 한두 개 넣는다. 접속 구조를 다양하게 쓴다(although, which meant, by the time, I had pp 같은 과거완료, if it hadn't been for 등).",skill:"문단 단위로 서사와 묘사를 과거·현재·미래 모두에서 막힘없이 통제한다. 예상 밖 상황(complication)이 생긴 경위와 해결을 구체적 세부와 함께 말하고, 이유·결과·비교를 붙이며, 마무리에서 한 문장 정도 일반화된 의견이나 배운 점을 말한다."}
+  }[lv];
+  var p="OPIc(ACTFL) 답변 틀을 만드세요. 목표 등급은 "+LV.name+"입니다. "+LV.skill+"\n"
    +(meta().about?"답변자: "+meta().about+"\n":"")
    +"주제: "+t.name+"\n질문 유형: "+KIND[kind]+"\n이야기 재료(한국어):\n"+mat+"\n\n"
    +"요구:\n"
    +"1) q: 시험관이 실제로 할 법한 영어 질문 1개."+(rp?" 롤플레이이므로 상황 설명과 할 일, 중간에 생기는 예상 밖 문제(complication) 처리까지 포함한다.":"")+"\n"
-   +"2) en: 영어 답변 120~170단어. 말로 하는 자연스러운 영어. 도입 → 묘사 → 구체적 사건(순서, 숫자) → 느낌 → 마무리로 문단을 이어 간다. "+(kind==="past"?"과거 시제 중심에 현재·미래로 마무리한다.":"과거·현재·미래 시제를 상황에 맞게 오간다.")+" 문장은 짧게, 연결어(so, but, then, at that time)를 쓴다. 어려운 어휘는 피하고 답변자가 실제로 입에 올릴 만한 수준(B1~B2)으로 쓴다. 외운 티가 나는 문어체 금지.\n"
+   +"2) en: 영어 답변 "+LV.len+". 말로 하는 자연스러운 영어. 도입 → 묘사 → 구체적 사건(순서, 숫자, 대화나 반응) → 느낌 → 마무리로 문단을 이어 간다. "+(kind==="past"?"과거 시제 중심에 현재·미래로 마무리한다.":"과거·현재·미래 시제를 상황에 맞게 오간다.")+" "+LV.voc+" 읽는 듯한 문어체와 외운 티가 나는 문장은 금지한다.\n"
    +"3) expr: 이 답변에서 뽑은, 다른 주제에도 다시 쓸 수 있는 핵심 표현 6~8개. [{\"en\":\"\",\"ko\":\"\"}]\n"
    +"4) tip: 한국어 한 줄. 이 답을 말할 때 주의할 시제나 구조.\n"
    +"이야기에 없는 사실은 지어내지 말고, 모자라면 일반적인 표현으로 둔다.\n"
    +"JSON만 출력: {\"q\":\"\",\"en\":\"\",\"expr\":[{\"en\":\"\",\"ko\":\"\"}],\"tip\":\"\"}";
   return ai(p,"default").then(function(r){
     if(!r||!r.en)throw {code:"invalid_json"};
-    var f={id:nid(),kind:kind,q:String(r.q||""),en:String(r.en),expr:(r.expr||[]).filter(function(x){return x&&x.en}).map(function(x){return {en:String(x.en),ko:String(x.ko||"")}}),tip:String(r.tip||""),srcs:ss.slice(0,3).map(function(s){return s.id}),at:new Date().toISOString()};
+    var f={id:nid(),kind:kind,q:String(r.q||""),en:String(r.en),expr:(r.expr||[]).filter(function(x){return x&&x.en}).map(function(x){return {en:String(x.en),ko:String(x.ko||"")}}),tip:String(r.tip||""),level:lv,srcs:ss.slice(0,3).map(function(s){return s.id}),at:new Date().toISOString()};
     d.frames.unshift(f);persist("st_"+t.id);return f;
   });
 }
@@ -254,6 +258,8 @@ function home(){
    +'<section class="card"><h3>내보내기</h3><div class="row"><label class="chk"><input type="checkbox" data-bind="exp.stories"'+(S.exp.stories?" checked":"")+'>한국어 이야기 재료 포함</label>'
    +'<label class="chk"><input type="checkbox" data-bind="exp.sens"'+(S.exp.sens?" checked":"")+'>개인적·민감 표시 항목 포함</label></div>'
    +'<div><button class="ghost" data-act="export">.md로 저장</button></div></section>'
+   +'<section class="card"><h3>목표 등급</h3><p class="mute small">영어 답변 틀을 만들 때의 기준입니다. 이미 만든 틀은 바뀌지 않습니다.</p>'
+   +'<div><select data-bind="level" aria-label="목표 등급"><option value="AL"'+(meta().level!=="IH"?" selected":"")+'>AL (Advanced Low)</option><option value="IH"'+(meta().level==="IH"?" selected":"")+'>IH (Intermediate High)</option></select></div></section>'
    +'<section class="card"><h3>소유자 설명</h3><p class="mute small">AI에게 넘기는 한 줄 설명입니다. 예: 직업, 영어 수준, 목표.</p>'
    +'<textarea rows="2" data-bind="about">'+esc(meta().about||"")+'</textarea></section>';
   return h;
@@ -276,7 +282,7 @@ function storyHtml(t,s){
 }
 function frameHtml(t,f){
   var ed=S.edit==="f"+f.id;
-  var h='<div class="card"><div class="row between"><span class="pill">'+KIND[f.kind]+'</span><span class="row"><button class="link" data-act="frameCopy" data-id="'+f.id+'">복사</button><button class="link" data-act="frameEdit" data-id="'+f.id+'">'+(ed?"완료":"편집")+'</button><button class="link danger" data-act="frameDel" data-id="'+f.id+'">삭제</button></span></div>'
+  var h='<div class="card"><div class="row between"><span class="row"><span class="pill">'+KIND[f.kind]+'</span>'+(f.level?'<span class="pill">'+f.level+'</span>':"")+'</span><span class="row"><button class="link" data-act="frameCopy" data-id="'+f.id+'">복사</button><button class="link" data-act="frameEdit" data-id="'+f.id+'">'+(ed?"완료":"편집")+'</button><button class="link danger" data-act="frameDel" data-id="'+f.id+'">삭제</button></span></div>'
    +'<p class="q">'+esc(f.q)+'</p>';
   if(ed)h+='<textarea rows="10" data-bind="frameEn" data-id="'+f.id+'">'+esc(f.en)+'</textarea>';
   else h+='<div class="en">'+esc(f.en)+'</div>';
@@ -392,11 +398,13 @@ document.addEventListener("input",function(ev){
   var el=ev.target,p=el.dataset&&el.dataset.bind;if(!p)return;
   if(p==="frameEn"){var f=frameOf(S.view,el.dataset.id);if(f)f.en=el.value;return}
   if(p==="about"){meta().about=el.value;return}
+  if(p==="level")return;
   setPath(p,el.type==="checkbox"?el.checked:el.value);
 });
 document.addEventListener("change",function(ev){
   var el=ev.target;
   if(el.dataset&&el.dataset.bind==="about"){persist("meta");return}
+  if(el.dataset&&el.dataset.bind==="level"){meta().level=el.value;persist("meta");return}
   if(el.dataset&&el.dataset.bind&&el.dataset.bind.indexOf("exp.")===0){setPath(el.dataset.bind,el.checked);return}
   if(el.dataset&&el.dataset.bind==="form.sens"){S.form.sens=el.checked;return}
   if(el.dataset&&el.dataset.chg==="storyKind"){var s=storyOf(S.view,el.dataset.id);s.kind=el.value;persist("st_"+S.view);render()}
