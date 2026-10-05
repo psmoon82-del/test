@@ -209,7 +209,7 @@ B.save=function(name,data){
 };
 
 /* ---------- 상태·저장 ---------- */
-var S={docs:{},view:"home",busy:"",msg:"",msgBad:false,save:"",draft:{},form:{kind:"past",title:"",text:"",sens:false},edit:"",exp:{stories:true,sens:false},askKind:"past"};
+var S={docs:{},sel:{},cp:{q:true,expr:true},copyBox:"",view:"home",busy:"",msg:"",msgBad:false,save:"",draft:{},form:{kind:"past",title:"",text:"",sens:false},edit:"",exp:{stories:true,sens:false},askKind:"past"};
 var chain={};
 function persist(name){
   var data=clone(S.docs[name]);
@@ -318,7 +318,34 @@ function kindChips(t){
 }
 function counts(){var st=0,fr=0,tot=0,ts=topics().filter(inScope);topics().forEach(function(t){var d=tdoc(t.id);st+=d.stories.length;fr+=d.frames.length});ts.forEach(function(t){tot+=fill(t)});return {st:st,fr:fr,pct:ts.length?Math.round(tot/ts.length*100):0}}
 function kindOpts(sel,list){return (list||KINDS.map(function(k){return k[0]})).map(function(k){return '<option value="'+k+'"'+(k===sel?" selected":"")+'>'+KIND[k]+'</option>'}).join("")}
-function msgHtml(){return S.msg?'<div class="msg'+(S.msgBad?" bad":"")+'" role="status">'+esc(S.msg)+'</div>':""}
+function msgHtml(){
+  return (S.msg?'<div class="msg'+(S.msgBad?" bad":"")+'" role="status">'+esc(S.msg)+'</div>':"")
+   +(S.copyBox?'<section class="card"><textarea id="copybox" readonly rows="12" aria-label="복사할 글">'+esc(S.copyBox)+'</textarea><div class="row"><button class="ghost" data-act="copyClose">닫기</button></div></section>':"");
+}
+/* ----- 복사 ----- */
+function sortFrames(fr){return KINDS.reduce(function(a,k){return a.concat(fr.filter(function(f){return f.kind===k[0]}))},[])}
+function frameText(f){
+  var L=["### "+KIND[f.kind]];
+  if(S.cp.q&&f.q)L.push("Q. "+f.q);
+  L.push("",f.en);
+  if(S.cp.expr&&f.expr&&f.expr.length){L.push("","핵심 표현");f.expr.forEach(function(x){L.push("- "+x.en+(x.ko?" — "+x.ko:""))})}
+  return L.join("\n");
+}
+function topicText(t,frames){return "## "+t.name+"\n\n"+sortFrames(frames).map(frameText).join("\n\n")}
+function selCount(t){return tdoc(t.id).frames.filter(function(f){return S.sel[f.id]}).length}
+function doCopy(text,label){
+  S.copyBox="";
+  var ok=function(){note(label+" 복사했습니다.");render()};
+  var no=function(){S.copyBox=text;S.copyFocus=true;note("자동 복사가 막혀 있습니다. 아래 글을 선택해서 복사해 주세요.",true);render()};
+  try{navigator.clipboard.writeText(text).then(ok,no)}catch(e){no()}
+}
+function copyBar(t){
+  var n=selCount(t);
+  return '<div class="card"><div class="row"><button class="ghost" data-act="selAll">전체 선택</button><button class="ghost" data-act="selNone">선택 해제</button>'
+   +'<button data-act="copySel"'+(n?"":" disabled")+'>선택한 '+n+'개 복사</button><button class="ghost" data-act="copyTopic">이 주제 전체 복사</button></div>'
+   +'<div class="row"><label class="chk"><input type="checkbox" data-bind="cp.q"'+(S.cp.q?" checked":"")+'>질문 포함</label>'
+   +'<label class="chk"><input type="checkbox" data-bind="cp.expr"'+(S.cp.expr?" checked":"")+'>핵심 표현 포함</label></div></div>';
+}
 
 function nextCard(){
   var n=pickNext();
@@ -376,7 +403,7 @@ function home(){
   h+='<section class="card"><h3>주제 추가</h3><div class="row"><input type="text" id="new-topic" class="grow" placeholder="예: 쇼핑" data-bind="newTopic"><button class="ghost" data-act="topicAdd">추가</button></div></section>'
    +'<section class="card"><h3>내보내기</h3><div class="row"><label class="chk"><input type="checkbox" data-bind="exp.stories"'+(S.exp.stories?" checked":"")+'>한국어 이야기 재료 포함</label>'
    +'<label class="chk"><input type="checkbox" data-bind="exp.sens"'+(S.exp.sens?" checked":"")+'>개인적·민감 표시 항목 포함</label></div>'
-   +'<div><button class="ghost" data-act="export">.md로 저장</button></div></section>'
+   +'<div class="row"><button class="ghost" data-act="copyAll">모든 틀 복사</button><button class="ghost" data-act="export">.md로 저장</button></div></section>'
    +'<section class="card"><h3>목표 등급</h3><p class="mute small">영어 답변 틀을 만들 때의 기준입니다. 이미 만든 틀은 바뀌지 않습니다.</p>'
    +'<div><select data-bind="level" aria-label="목표 등급"><option value="AL"'+(meta().level!=="IH"?" selected":"")+'>AL (Advanced Low)</option><option value="IH"'+(meta().level==="IH"?" selected":"")+'>IH (Intermediate High)</option></select></div></section>'
    +'<section class="card"><h3>소유자 설명</h3><p class="mute small">AI에게 넘기는 한 줄 설명입니다. 예: 직업, 영어 수준, 목표.</p>'
@@ -414,7 +441,7 @@ function linkedHtml(t,m){
 }
 function frameHtml(t,f){
   var ed=S.edit==="f"+f.id;
-  var h='<div class="card"><div class="row between"><span class="row"><span class="pill">'+KIND[f.kind]+'</span>'+(f.level?'<span class="pill">'+f.level+'</span>':"")+'</span><span class="row"><button class="link" data-act="frameCopy" data-id="'+f.id+'">복사</button><button class="link" data-act="frameEdit" data-id="'+f.id+'">'+(ed?"완료":"편집")+'</button><button class="link danger" data-act="frameDel" data-id="'+f.id+'">삭제</button></span></div>'
+  var h='<div class="card"><div class="row between"><span class="row"><label class="chk"><input type="checkbox" data-sel="'+f.id+'"'+(S.sel[f.id]?" checked":"")+' aria-label="복사할 틀 선택"></label><span class="pill">'+KIND[f.kind]+'</span>'+(f.level?'<span class="pill">'+f.level+'</span>':"")+'</span><span class="row"><button class="link" data-act="frameCopy" data-id="'+f.id+'">복사</button><button class="link" data-act="frameEdit" data-id="'+f.id+'">'+(ed?"완료":"편집")+'</button><button class="link danger" data-act="frameDel" data-id="'+f.id+'">삭제</button></span></div>'
    +'<p class="q">'+esc(f.q)+'</p>'+(f.from&&f.from.length?'<p class="mute small">재료: '+esc(f.from.join(", "))+'</p>':"");
   if(ed)h+='<textarea rows="10" data-bind="frameEn" data-id="'+f.id+'">'+esc(f.en)+'</textarea>';
   else h+='<div class="en">'+esc(f.en)+'</div>';
@@ -440,7 +467,7 @@ function topicView(id){
    +(mats(t).some(function(m){return m.from})?'<h2>다른 주제에서 가져온 이야기 '+mats(t).filter(function(m){return m.from}).length+'</h2>'+mats(t).filter(function(m){return m.from}).map(function(m){return linkedHtml(t,m)}).join(""):"")
    +'<div class="row between"><h2>답변 틀 '+d.frames.length+'</h2><span class="row">'
    +(mats(t).length?KINDS.filter(function(k){return k[0]!=="role"||need(t).indexOf("role")>=0}).map(function(k){return '<button class="ghost" data-act="frameKind" data-id="'+k[0]+'"'+(b?" disabled":"")+'>'+(b==="k"+k[0]?"만드는 중…":KIND[k[0]]+" 틀")+'</button>'}).join(""):"")+'</span></div>'
-   +(d.frames.length?d.frames.map(function(f){return frameHtml(t,f)}).join(""):'<p class="mute small">이야기를 저장한 뒤 "영어 틀 만들기"를 누르면 여기에 쌓입니다.</p>');
+   +(d.frames.length?copyBar(t)+d.frames.map(function(f){return frameHtml(t,f)}).join(""):'<p class="mute small">이야기를 저장한 뒤 "영어 틀 만들기"를 누르면 여기에 쌓입니다.</p>');
   return h;
 }
 function render(){
@@ -448,6 +475,7 @@ function render(){
   $("#app").innerHTML=S.view==="home"?home():topicView(S.view);
   paintStatus();
   window.scrollTo(0,y);
+  if(S.copyFocus){S.copyFocus=false;var cb=$("#copybox");if(cb){cb.focus();cb.select()}}
 }
 function note(m,bad){S.msg=m||"";S.msgBad=!!bad}
 
@@ -510,11 +538,18 @@ var ACT={
   frameKind:function(el){var t=topicBy(S.view),k=el.dataset.id;run("k"+k,function(){return buildFrame(t,k)})},
   frameDel:function(el){var d=tdoc(S.view);d.frames=d.frames.filter(function(f){return f.id!==el.dataset.id});persist("st_"+S.view);render()},
   frameEdit:function(el){var id="f"+el.dataset.id;if(S.edit===id){S.edit="";persist("st_"+S.view)}else S.edit=id;render()},
-  frameCopy:function(el){
-    var f=frameOf(S.view,el.dataset.id),txt=f.q+"\n\n"+f.en;
-    var done=function(ok){note(ok?"복사했습니다.":"복사하지 못했습니다. 직접 선택해서 복사해 주세요.",!ok);render()};
-    try{navigator.clipboard.writeText(txt).then(function(){done(true)},function(){done(false)})}catch(e){done(false)}
+  frameCopy:function(el){var f=frameOf(S.view,el.dataset.id);doCopy(frameText(f),"1개")},
+  selAll:function(){tdoc(S.view).frames.forEach(function(f){S.sel[f.id]=true});render()},
+  selNone:function(){tdoc(S.view).frames.forEach(function(f){delete S.sel[f.id]});render()},
+  copySel:function(){var t=topicBy(S.view),fr=tdoc(t.id).frames.filter(function(f){return S.sel[f.id]});if(fr.length)doCopy(topicText(t,fr),fr.length+"개")},
+  copyTopic:function(){var t=topicBy(S.view),fr=tdoc(t.id).frames;if(fr.length)doCopy(topicText(t,fr),fr.length+"개")},
+  copyAll:function(){
+    var parts=[],n=0;
+    topics().forEach(function(t){var fr=tdoc(t.id).frames;if(fr.length){n+=fr.length;parts.push(topicText(t,fr))}});
+    if(!n){note("복사할 틀이 없습니다.",true);render();return}
+    doCopy(parts.join("\n\n"),n+"개");
   },
+  copyClose:function(){S.copyBox="";render()},
   export:function(){
     if(!B.dl){note("이 환경에서는 파일 저장을 쓸 수 없습니다.",true);render();return}
     B.dl.save({filename:"opic-scripts.md",data:new Blob([mdExport()],{type:"text/markdown"})}).then(function(){note("저장했습니다.");render()}).catch(function(e){if(e&&e.code!=="declined"){note("저장하지 못했습니다 ("+(e&&e.code||"오류")+")",true);render()}});
@@ -537,6 +572,8 @@ document.addEventListener("input",function(ev){
 });
 document.addEventListener("change",function(ev){
   var el=ev.target;
+  if(el.dataset&&el.dataset.sel){if(el.checked)S.sel[el.dataset.sel]=true;else delete S.sel[el.dataset.sel];render();return}
+  if(el.dataset&&el.dataset.bind&&el.dataset.bind.indexOf("cp.")===0){setPath(el.dataset.bind,el.checked);return}
   if(el.dataset&&el.dataset.sv){var v=meta().survey||(meta().survey={job:"회사 근무",student:"아니오",home:"가족과 함께 아파트",items:[]});if(!v.items)v.items=[];var i=v.items.indexOf(el.dataset.sv);if(el.checked&&i<0)v.items.push(el.dataset.sv);if(!el.checked&&i>=0)v.items.splice(i,1);persist("meta");render();return}
   if(el.dataset&&el.dataset.bind==="about"){persist("meta");return}
   if(el.dataset&&el.dataset.bind==="level"){meta().level=el.value;persist("meta");return}
